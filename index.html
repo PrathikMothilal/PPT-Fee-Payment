@@ -1,0 +1,1664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pallavan Polytechnic College – Fee Payment Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --royal: #3D1A6E;
+    --royal-dark: #2A1050;
+    --royal-light: #5E2EA0;
+    --gold: #C9A84C;
+    --gold-light: #E4C76B;
+    --gold-pale: #F9F3E3;
+    --cream: #FDFAF4;
+    --white: #FFFFFF;
+    --text-dark: #1A1A2E;
+    --text-mid: #4A4A6A;
+    --text-muted: #7A7A9A;
+    --border: #E8E0F0;
+    --border-gold: #C9A84C44;
+    --success: #1B6B3A;
+    --success-bg: #EAF5EE;
+    --danger: #8B1A1A;
+    --danger-bg: #FBF0F0;
+    --warning: #7A5500;
+    --warning-bg: #FFF8E6;
+    --shadow-soft: 0 4px 24px rgba(61,26,110,0.08);
+    --shadow-card: 0 2px 12px rgba(61,26,110,0.06);
+    --radius: 10px;
+    --radius-lg: 16px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--text-dark);
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* ── Header ── */
+  .site-header {
+    background: linear-gradient(135deg, var(--royal-dark) 0%, var(--royal) 60%, var(--royal-light) 100%);
+    color: #fff;
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .site-header::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: rgba(201,168,76,0.12);
+  }
+  .site-header::after {
+    content: '';
+    position: absolute;
+    bottom: -30px; left: -30px;
+    width: 150px; height: 150px;
+    border-radius: 50%;
+    background: rgba(201,168,76,0.08);
+  }
+  .header-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 22px 32px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    position: relative; z-index: 1;
+  }
+  .college-crest {
+    width: 64px; height: 64px;
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 100%);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-family: 'Cinzel', serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--royal-dark);
+    border: 2px solid rgba(255,255,255,0.3);
+  }
+  .header-text h1 {
+    font-family: 'Cinzel', serif;
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: #fff;
+    line-height: 1.2;
+  }
+  .header-text .subtitle {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.95rem;
+    color: var(--gold-light);
+    letter-spacing: 0.04em;
+    margin-top: 2px;
+    font-style: italic;
+  }
+  .header-text .tagline {
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.65);
+    margin-top: 3px;
+    letter-spacing: 0.02em;
+  }
+  .header-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative; z-index: 1;
+  }
+  .header-badge {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(201,168,76,0.4);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 0.75rem;
+    color: var(--gold-light);
+    letter-spacing: 0.03em;
+  }
+  .nav-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(201,168,76,0.5), transparent);
+  }
+
+  /* ── Page wrapper ── */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── Auth section ── */
+  .auth-section {
+    min-height: calc(100vh - 120px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 16px;
+  }
+  .auth-card {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
+    border: 1px solid var(--border);
+    width: 100%;
+    max-width: 440px;
+    overflow: hidden;
+  }
+  .auth-card-header {
+    background: linear-gradient(135deg, var(--royal) 0%, var(--royal-light) 100%);
+    padding: 28px 32px;
+    text-align: center;
+  }
+  .auth-card-header h2 {
+    font-family: 'Cinzel', serif;
+    font-size: 1.1rem;
+    color: #fff;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .auth-card-header p {
+    color: rgba(255,255,255,0.7);
+    font-size: 0.82rem;
+    margin-top: 6px;
+  }
+  .gold-bar {
+    height: 3px;
+    background: linear-gradient(90deg, var(--gold), var(--gold-light), var(--gold));
+  }
+  .auth-card-body { padding: 32px; }
+
+  /* ── Form elements ── */
+  .form-group { margin-bottom: 18px; }
+  .form-group label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-mid);
+    margin-bottom: 6px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  .form-group label .required { color: var(--royal-light); margin-left: 2px; }
+  .form-group label .optional { color: var(--text-muted); font-weight: 400; font-size: 0.75rem; text-transform: none; }
+  .form-control {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.92rem;
+    color: var(--text-dark);
+    background: #fafafa;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+  .form-control:focus {
+    border-color: var(--royal-light);
+    box-shadow: 0 0 0 3px rgba(94,46,160,0.1);
+    background: var(--white);
+  }
+  .form-control::placeholder { color: var(--text-muted); }
+  select.form-control { cursor: pointer; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: var(--radius);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    text-decoration: none;
+    letter-spacing: 0.01em;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--royal) 0%, var(--royal-light) 100%);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(61,26,110,0.25);
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(61,26,110,0.32); }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-gold {
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 100%);
+    color: var(--royal-dark);
+    font-weight: 600;
+    box-shadow: 0 4px 14px rgba(201,168,76,0.3);
+  }
+  .btn-gold:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(201,168,76,0.4); }
+  .btn-outline {
+    background: transparent;
+    border: 1.5px solid var(--royal);
+    color: var(--royal);
+  }
+  .btn-outline:hover { background: var(--royal); color: #fff; }
+  .btn-danger {
+    background: var(--danger-bg);
+    color: var(--danger);
+    border: 1px solid rgba(139,26,26,0.2);
+  }
+  .btn-danger:hover { background: var(--danger); color: #fff; }
+  .btn-sm { padding: 7px 14px; font-size: 0.82rem; border-radius: 7px; }
+  .btn-full { width: 100%; }
+
+  .link-btn {
+    background: none; border: none;
+    color: var(--royal-light); cursor: pointer;
+    font-size: 0.88rem; text-decoration: underline;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .link-btn:hover { color: var(--royal); }
+
+  /* ── Alerts ── */
+  .alert {
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    font-size: 0.85rem;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .alert-danger { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(139,26,26,0.2); }
+  .alert-success { background: var(--success-bg); color: var(--success); border: 1px solid rgba(27,107,58,0.2); }
+  .alert-warning { background: var(--warning-bg); color: var(--warning); border: 1px solid rgba(122,85,0,0.2); }
+
+  /* ── Dashboard layout ── */
+  .dashboard { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+  .dash-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .dash-title {
+    font-family: 'Cinzel', serif;
+    font-size: 1.2rem;
+    color: var(--royal);
+    font-weight: 600;
+  }
+  .dash-subtitle { font-size: 0.85rem; color: var(--text-muted); margin-top: 3px; }
+
+  .welcome-banner {
+    background: linear-gradient(135deg, var(--royal) 0%, var(--royal-light) 100%);
+    border-radius: var(--radius-lg);
+    padding: 28px 32px;
+    color: #fff;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+  }
+  .welcome-banner h2 {
+    font-family: 'Cinzel', serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+  }
+  .welcome-banner .meta { font-size: 0.83rem; color: rgba(255,255,255,0.75); margin-top: 6px; }
+
+  /* ── Fee cards ── */
+  .fee-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; margin-bottom: 28px; }
+  .fee-card {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    padding: 22px 24px;
+    box-shadow: var(--shadow-card);
+  }
+  .fee-card .card-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .fee-card .card-amount {
+    font-family: 'Cinzel', serif;
+    font-size: 1.7rem;
+    font-weight: 600;
+    color: var(--text-dark);
+  }
+  .fee-card .card-amount span { font-size: 0.9rem; color: var(--text-muted); font-family: 'DM Sans', serif; font-weight: 400; }
+  .fee-card .card-note { font-size: 0.78rem; color: var(--text-muted); margin-top: 8px; }
+  .fee-card.due { border-left: 4px solid var(--gold); }
+  .fee-card.overdue { border-left: 4px solid #C0392B; }
+  .fee-card.total { border-left: 4px solid var(--royal); }
+  .fee-card.paid { border-left: 4px solid #27AE60; }
+
+  /* ── Tables ── */
+  .table-wrap { background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow-card); margin-bottom: 24px; }
+  .table-wrap table { width: 100%; border-collapse: collapse; }
+  .table-wrap thead th {
+    background: linear-gradient(135deg, var(--royal) 0%, var(--royal-light) 100%);
+    color: #fff;
+    padding: 13px 18px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-align: left;
+  }
+  .table-wrap tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+  .table-wrap tbody tr:last-child { border-bottom: none; }
+  .table-wrap tbody tr:hover { background: var(--gold-pale); }
+  .table-wrap tbody td { padding: 13px 18px; font-size: 0.88rem; color: var(--text-dark); }
+  .table-wrap tbody td.muted { color: var(--text-muted); font-size: 0.82rem; }
+  .click-row { cursor: pointer; }
+
+  /* ── Badges ── */
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.73rem;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+  }
+  .badge-green { background: var(--success-bg); color: var(--success); }
+  .badge-red { background: var(--danger-bg); color: var(--danger); }
+  .badge-gold { background: var(--gold-pale); color: #7A5500; }
+  .badge-purple { background: #F0E8FF; color: var(--royal); }
+
+  /* ── Section card ── */
+  .section-card {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .section-card .card-head {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #FDFBFF;
+  }
+  .section-card .card-head h3 {
+    font-family: 'Cinzel', serif;
+    font-size: 0.95rem;
+    color: var(--royal);
+    font-weight: 600;
+  }
+  .section-card .card-body { padding: 24px; }
+
+  /* ── UPI Payment ── */
+  .upi-box {
+    background: linear-gradient(135deg, #F5F0FF 0%, #EFE8FA 100%);
+    border: 1px solid rgba(94,46,160,0.2);
+    border-radius: var(--radius-lg);
+    padding: 28px;
+    text-align: center;
+    margin-top: 8px;
+  }
+  .upi-icon {
+    width: 56px; height: 56px;
+    background: linear-gradient(135deg, var(--royal) 0%, var(--royal-light) 100%);
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--gold-light);
+  }
+  .upi-id-display {
+    font-family: 'Cinzel', serif;
+    font-size: 1rem;
+    color: var(--royal);
+    background: var(--white);
+    border: 1px solid rgba(94,46,160,0.25);
+    border-radius: var(--radius);
+    padding: 10px 20px;
+    display: inline-block;
+    margin: 12px 0;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Payment history ── */
+  .pay-entry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .pay-entry:last-child { border-bottom: none; }
+  .pay-entry .pay-left { display: flex; align-items: center; gap: 14px; }
+  .pay-icon {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .pay-icon.paid { background: var(--success-bg); }
+  .pay-icon.pending { background: var(--warning-bg); }
+
+  /* ── Admin panels ── */
+  .admin-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .search-input-wrap { position: relative; }
+  .search-input-wrap input {
+    padding: 10px 14px 10px 38px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    background: var(--white);
+    width: 240px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-input-wrap input:focus { border-color: var(--royal-light); }
+  .search-input-wrap::before {
+    content: '🔍';
+    position: absolute;
+    left: 12px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 13px;
+  }
+
+  /* ── Student detail modal / overlay ── */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(26,10,52,0.6);
+    z-index: 999;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 16px;
+    overflow-y: auto;
+  }
+  .overlay.open { display: flex; }
+  .modal {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 680px;
+    box-shadow: 0 20px 60px rgba(61,26,110,0.25);
+    overflow: hidden;
+    position: relative;
+  }
+  .modal-head {
+    background: linear-gradient(135deg, var(--royal) 0%, var(--royal-light) 100%);
+    padding: 22px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .modal-head h2 {
+    font-family: 'Cinzel', serif;
+    font-size: 1rem;
+    color: #fff;
+    font-weight: 600;
+  }
+  .modal-close {
+    background: rgba(255,255,255,0.2); border: none;
+    border-radius: 50%; width: 32px; height: 32px;
+    color: #fff; cursor: pointer; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  .modal-close:hover { background: rgba(255,255,255,0.3); }
+  .modal-body { padding: 28px; max-height: 75vh; overflow-y: auto; }
+
+  /* ── Grid layouts ── */
+  .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 600px) {
+    .form-grid-2, .form-grid-3 { grid-template-columns: 1fr; }
+    .fee-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── Register form ── */
+  .register-section {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 40px 16px;
+  }
+  .register-card {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .register-card-head {
+    background: linear-gradient(135deg, var(--royal) 0%, var(--royal-light) 100%);
+    padding: 28px 36px;
+  }
+  .register-card-head h2 {
+    font-family: 'Cinzel', serif;
+    font-size: 1.1rem;
+    color: #fff;
+    font-weight: 600;
+  }
+  .register-card-head p {
+    color: rgba(255,255,255,0.7);
+    font-size: 0.82rem;
+    margin-top: 5px;
+  }
+  .register-card-body { padding: 32px 36px; }
+  .section-divider {
+    font-family: 'Cinzel', serif;
+    font-size: 0.78rem;
+    color: var(--royal);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-gold);
+    padding-bottom: 8px;
+    margin: 24px 0 18px;
+  }
+
+  /* ── Utility ── */
+  .text-center { text-align: center; }
+  .text-right { text-align: right; }
+  .text-muted { color: var(--text-muted); font-size: 0.82rem; }
+  .mt-4 { margin-top: 4px; }
+  .mt-8 { margin-top: 8px; }
+  .mt-16 { margin-top: 16px; }
+  .mt-24 { margin-top: 24px; }
+  .mb-16 { margin-bottom: 16px; }
+  .mb-24 { margin-bottom: 24px; }
+  .d-flex { display: flex; }
+  .align-center { align-items: center; }
+  .justify-between { justify-content: space-between; }
+  .gap-8 { gap: 8px; }
+  .gap-12 { gap: 12px; }
+  .bold { font-weight: 600; }
+  .rupee { font-family: 'DM Sans', sans-serif; }
+
+  /* ── Footer ── */
+  .site-footer {
+    background: var(--royal-dark);
+    color: rgba(255,255,255,0.55);
+    text-align: center;
+    padding: 18px;
+    font-size: 0.78rem;
+    letter-spacing: 0.03em;
+    margin-top: 40px;
+  }
+  .site-footer span { color: var(--gold); }
+
+  /* ── Print/responsive tweaks ── */
+  @media (max-width: 768px) {
+    .header-inner { padding: 16px 20px; }
+    .dashboard { padding: 20px 16px; }
+    .welcome-banner { flex-direction: column; align-items: flex-start; }
+    .dash-topbar { flex-direction: column; align-items: flex-start; gap: 12px; }
+  }
+
+  .fee-year-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .fee-year-row:last-child { border-bottom: none; }
+  .fee-status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+  }
+  .dot-green { background: #27AE60; }
+  .dot-red { background: #C0392B; }
+  .dot-gold { background: var(--gold); }
+
+  .spinner {
+    display: inline-block;
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header class="site-header">
+  <div class="header-inner">
+    <div class="college-crest">PPC</div>
+    <div class="header-text">
+      <h1>Pallavan Polytechnic College</h1>
+      <div class="subtitle">Pallavan Educational Trust</div>
+      <div class="tagline">AICTE Approved · Est. 1986 · College Code: 370 · Kolivakkam, Kanchipuram, Tamil Nadu</div>
+    </div>
+    <div class="header-right" id="headerRight">
+      <div class="header-badge">Fee Payment Portal</div>
+    </div>
+  </div>
+  <div class="nav-divider"></div>
+</header>
+
+<!-- ══════════════════════════════════════
+     PAGE: LOGIN
+══════════════════════════════════════ -->
+<div id="pagLogin" class="page active">
+  <section class="auth-section">
+    <div class="auth-card">
+      <div class="auth-card-header">
+        <h2>Student & Staff Login</h2>
+        <p>Sign in to access your fee dashboard</p>
+      </div>
+      <div class="gold-bar"></div>
+      <div class="auth-card-body">
+        <div id="loginAlert"></div>
+        <div class="form-group">
+          <label>Application ID or Email <span class="required">*</span></label>
+          <input type="text" id="loginId" class="form-control" placeholder="Enter your Application ID or email">
+        </div>
+        <div class="form-group">
+          <label>Password <span class="required">*</span></label>
+          <input type="password" id="loginPwd" class="form-control" placeholder="Enter your password">
+        </div>
+        <button class="btn btn-primary btn-full" onclick="doLogin()">Sign In</button>
+        <div class="text-center mt-16">
+          <span class="text-muted">New student? </span>
+          <button class="link-btn" onclick="showPage('pagRegister')">Create an account →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ══════════════════════════════════════
+     PAGE: REGISTER
+══════════════════════════════════════ -->
+<div id="pagRegister" class="page">
+  <section class="register-section">
+    <div class="register-card">
+      <div class="register-card-head">
+        <h2>New Student Registration</h2>
+        <p>Create your fee portal account — please fill in all required details accurately.</p>
+      </div>
+      <div class="gold-bar"></div>
+      <div class="register-card-body">
+        <div id="registerAlert"></div>
+
+        <div class="section-divider">Academic Details</div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label>Application ID <span class="required">*</span></label>
+            <input type="text" id="rAppId" class="form-control" placeholder="e.g. PPT2024001">
+          </div>
+          <div class="form-group">
+            <label>Admission Year <span class="required">*</span></label>
+            <select id="rYear" class="form-control">
+              <option value="">Select year</option>
+              <option>2020</option><option>2021</option><option>2022</option><option>2023</option><option>2024</option><option>2025</option><option>2026</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Current Year of Study <span class="required">*</span></label>
+            <select id="rStudyYear" class="form-control">
+              <option value="">Select</option>
+              <option>1st Year</option><option>2nd Year</option><option>3rd Year</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Programme / Course <span class="required">*</span></label>
+            <select id="rCourse" class="form-control">
+              <option value="">Select programme</option>
+              <option>Diploma in Civil Engineering</option>
+              <option>Diploma in Mechanical Engineering</option>
+              <option>Diploma in Electrical & Electronics Engg.</option>
+              <option>Diploma in Electronics & Comm. Engg.</option>
+              <option>Diploma in Computer Engineering</option>
+              <option>Diploma in Information Technology</option>
+              <option>ITI – Fitter</option>
+              <option>ITI – Turner</option>
+              <option>ITI – Electrician</option>
+              <option>ITI – Welder</option>
+              <option>ITI – COPA</option>
+              <option>ITI – Machinist</option>
+              <option>ITI – Mechanic Motor Vehicle</option>
+              <option>ITI – Draughtsman Civil</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="section-divider">Personal Details</div>
+        <div class="form-group">
+          <label>Full Name (as per records) <span class="required">*</span></label>
+          <input type="text" id="rName" class="form-control" placeholder="Enter full name">
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label>Date of Birth <span class="required">*</span></label>
+            <input type="date" id="rDob" class="form-control">
+          </div>
+          <div class="form-group">
+            <label>Gender <span class="required">*</span></label>
+            <select id="rGender" class="form-control">
+              <option value="">Select</option>
+              <option>Male</option><option>Female</option><option>Transgender</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Community <span class="required">*</span></label>
+            <select id="rCommunity" class="form-control">
+              <option value="">Select</option>
+              <option>OC</option><option>BC</option><option>MBC</option><option>SC</option><option>ST</option><option>SCA</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Aadhar Number <span class="required">*</span></label>
+            <input type="text" id="rAadhar" class="form-control" placeholder="12-digit Aadhar" maxlength="12">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Residential Address <span class="required">*</span></label>
+          <textarea id="rAddress" class="form-control" rows="3" placeholder="Door No., Street, Area, District, PIN"></textarea>
+        </div>
+
+        <div class="section-divider">Contact Details</div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label>Mobile Number <span class="required">*</span></label>
+            <input type="tel" id="rMobile" class="form-control" placeholder="10-digit mobile number" maxlength="10">
+          </div>
+          <div class="form-group">
+            <label>Email Address <span class="optional">(optional)</span></label>
+            <input type="email" id="rEmail" class="form-control" placeholder="student@email.com">
+          </div>
+        </div>
+
+        <div class="section-divider">Parent / Guardian Details</div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label>Father's Name <span class="required">*</span></label>
+            <input type="text" id="rFatherName" class="form-control" placeholder="Father's full name">
+          </div>
+          <div class="form-group">
+            <label>Father's Mobile <span class="required">*</span></label>
+            <input type="tel" id="rFatherMobile" class="form-control" placeholder="10-digit number" maxlength="10">
+          </div>
+          <div class="form-group">
+            <label>Mother's Name <span class="required">*</span></label>
+            <input type="text" id="rMotherName" class="form-control" placeholder="Mother's full name">
+          </div>
+          <div class="form-group">
+            <label>Mother's Mobile <span class="required">*</span></label>
+            <input type="tel" id="rMotherMobile" class="form-control" placeholder="10-digit number" maxlength="10">
+          </div>
+        </div>
+
+        <div class="section-divider">Portal Access</div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label>Set Password <span class="required">*</span></label>
+            <input type="password" id="rPwd" class="form-control" placeholder="Minimum 6 characters">
+          </div>
+          <div class="form-group">
+            <label>Confirm Password <span class="required">*</span></label>
+            <input type="password" id="rPwd2" class="form-control" placeholder="Re-enter password">
+          </div>
+        </div>
+
+        <div class="d-flex gap-12 mt-24">
+          <button class="btn btn-outline" onclick="showPage('pagLogin')" style="min-width:120px">← Back</button>
+          <button class="btn btn-primary" style="flex:1" onclick="doRegister()">Register Account</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ══════════════════════════════════════
+     PAGE: STUDENT DASHBOARD
+══════════════════════════════════════ -->
+<div id="pagStudent" class="page">
+  <div class="dashboard">
+    <div class="dash-topbar">
+      <div>
+        <div class="dash-title">Student Fee Dashboard</div>
+        <div class="dash-subtitle" id="sDashSubtitle">Pallavan Polytechnic College</div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="doLogout()">Sign Out</button>
+    </div>
+
+    <!-- Welcome banner -->
+    <div class="welcome-banner">
+      <div>
+        <h2 id="sWelcomeName">Welcome, Student</h2>
+        <div class="meta" id="sWelcomeMeta"></div>
+      </div>
+      <div style="background:rgba(255,255,255,0.15);border-radius:12px;padding:16px 22px;text-align:center;flex-shrink:0;">
+        <div style="font-size:0.72rem;color:rgba(255,255,255,0.7);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:4px;">Application ID</div>
+        <div id="sAppId" style="font-family:'Cinzel',serif;font-size:1rem;color:var(--gold-light);font-weight:600;letter-spacing:0.04em;"></div>
+      </div>
+    </div>
+
+    <!-- Fee summary cards -->
+    <div class="fee-grid" id="sFeeCards">
+      <!-- injected by JS -->
+    </div>
+
+    <!-- Year-wise dues -->
+    <div class="section-card">
+      <div class="card-head">
+        <h3>Year-wise Fee Dues</h3>
+        <span class="badge badge-purple">Academic Year 2024–25</span>
+      </div>
+      <div class="card-body">
+        <div id="sYearwiseDues">
+          <p class="text-muted">No fee data available yet. Please contact the college office.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment section -->
+    <div class="section-card">
+      <div class="card-head">
+        <h3>Make a Payment</h3>
+      </div>
+      <div class="card-body">
+        <div id="sPayAlert"></div>
+        <div class="form-grid-2" style="margin-bottom:18px;">
+          <div class="form-group" style="margin:0;">
+            <label>Amount to Pay (₹) <span class="required">*</span></label>
+            <input type="number" id="sPayAmount" class="form-control" placeholder="Enter amount in rupees" min="1">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>Payment For</label>
+            <select id="sPayFor" class="form-control">
+              <option>Current Year Fees</option>
+              <option>Arrear / Previous Dues</option>
+              <option>Examination Fees</option>
+              <option>Miscellaneous</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="upi-box">
+          <div class="upi-icon">UPI</div>
+          <div style="font-size:0.85rem;color:var(--text-mid);margin-bottom:4px;">Pay via UPI to College Account</div>
+          <div class="upi-id-display" id="upiDisplay">College UPI ID — To be configured by Admin</div>
+          <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:18px;">Scan QR or use the UPI ID above in any UPI app (GPay, PhonePe, Paytm, BHIM)</div>
+          <button class="btn btn-gold" onclick="markPayment()">
+            ✓ &nbsp;I have completed the UPI payment
+          </button>
+          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:10px;">
+            Your payment will be verified and confirmed by the college office within 1–2 working days.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment history -->
+    <div class="section-card">
+      <div class="card-head">
+        <h3>Payment History</h3>
+      </div>
+      <div class="card-body" id="sPayHistory">
+        <p class="text-muted">No payments recorded yet.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     PAGE: ADMIN DASHBOARD
+══════════════════════════════════════ -->
+<div id="pagAdmin" class="page">
+  <div class="dashboard">
+    <div class="dash-topbar">
+      <div>
+        <div class="dash-title">Administrator Dashboard</div>
+        <div class="dash-subtitle">Pallavan Polytechnic College — Fee Management</div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="doLogout()">Sign Out</button>
+    </div>
+
+    <!-- Admin stats -->
+    <div class="fee-grid" id="adminStats">
+      <!-- injected -->
+    </div>
+
+    <!-- UPI settings -->
+    <div class="section-card mb-24">
+      <div class="card-head">
+        <h3>College Payment Settings</h3>
+      </div>
+      <div class="card-body">
+        <div class="form-grid-2">
+          <div class="form-group" style="margin:0;">
+            <label>College UPI ID <span class="required">*</span></label>
+            <input type="text" id="adminUpiId" class="form-control" placeholder="e.g. pallavan@sbi or 9XXXXXXXXX@upi">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>Bank Account Number</label>
+            <input type="text" id="adminAccNo" class="form-control" placeholder="College bank account number">
+          </div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:12px;align-items:center;">
+          <button class="btn btn-primary btn-sm" onclick="savePaymentSettings()">Save Settings</button>
+          <span id="settingsSavedMsg" style="font-size:0.82rem;color:var(--success);display:none;">✓ Settings saved!</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Default Fee Structure -->
+    <div class="section-card mb-24">
+      <div class="card-head">
+        <h3>Default Annual Fee Structure</h3>
+        <span class="text-muted" style="font-size:0.8rem;">Applied to new students if not individually set</span>
+      </div>
+      <div class="card-body">
+        <div class="form-grid-3">
+          <div class="form-group" style="margin:0;">
+            <label>1st Year (₹)</label>
+            <input type="number" id="defFee1" class="form-control" placeholder="0">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>2nd Year (₹)</label>
+            <input type="number" id="defFee2" class="form-control" placeholder="0">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>3rd Year (₹)</label>
+            <input type="number" id="defFee3" class="form-control" placeholder="0">
+          </div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:12px;align-items:center;">
+          <button class="btn btn-primary btn-sm" onclick="saveDefaultFees()">Save Fee Structure</button>
+          <span id="feeSavedMsg" style="font-size:0.82rem;color:var(--success);display:none;">✓ Default fees saved!</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pending payment approvals -->
+    <div class="section-card mb-24" id="pendingApprovalsCard">
+      <div class="card-head">
+        <h3>Pending Payment Verifications</h3>
+        <span class="badge badge-red" id="pendingCount">0 pending</span>
+      </div>
+      <div class="card-body" id="pendingApprovalsList">
+        <p class="text-muted">No pending verifications.</p>
+      </div>
+    </div>
+
+    <!-- Student list -->
+    <div class="section-card">
+      <div class="card-head">
+        <h3>Registered Students</h3>
+      </div>
+      <div class="card-body" style="padding-bottom:0;">
+        <div class="admin-toolbar">
+          <div class="search-input-wrap">
+            <input type="text" id="adminSearch" placeholder="Search by name or App ID…" oninput="renderStudentTable()">
+          </div>
+          <div class="d-flex gap-8">
+            <select id="adminFilterYear" class="form-control" style="width:auto;padding:8px 12px;font-size:0.85rem;" onchange="renderStudentTable()">
+              <option value="">All Years</option>
+              <option>1st Year</option><option>2nd Year</option><option>3rd Year</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap" style="border:none;box-shadow:none;">
+          <table>
+            <thead>
+              <tr>
+                <th>App ID</th>
+                <th>Name</th>
+                <th>Programme</th>
+                <th>Year</th>
+                <th>Mobile</th>
+                <th>Total Due</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="studentTableBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MODAL: Student Edit (Admin)
+══════════════════════════════════════ -->
+<div class="overlay" id="studentModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="modalStudentTitle">Student Details</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="gold-bar"></div>
+    <div class="modal-body">
+      <div id="modalContent"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     FOOTER
+══════════════════════════════════════ -->
+<footer class="site-footer">
+  © 2024 <span>Pallavan Polytechnic College</span> · Pallavan Educational Trust · Kolivakkam, Kanchipuram, Tamil Nadu – 631 502<br>
+  AICTE Approved · College Code: 370 · Managed by Rtn. T G P Mothilal, M.E., B.L.
+</footer>
+
+<!-- ══════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════ -->
+<script>
+/* ── DB helpers using localStorage ── */
+const DB = {
+  get: k => { try { return JSON.parse(localStorage.getItem(k)) } catch { return null } },
+  set: (k,v) => localStorage.setItem(k, JSON.stringify(v)),
+  getStudents: () => DB.get('ppt_students') || [],
+  setStudents: s => DB.set('ppt_students', s),
+  getSettings: () => DB.get('ppt_settings') || { upiId:'', accNo:'', defFee1:0, defFee2:0, defFee3:0 },
+  setSettings: s => DB.set('ppt_settings', s),
+};
+
+const ADMIN_EMAIL = 'pallavanppt86@gmail.com';
+const ADMIN_PWD = 'PPT@1986';
+let currentUser = null; // null | 'admin' | studentObj
+
+/* ── Page routing ── */
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function updateHeader() {
+  const hr = document.getElementById('headerRight');
+  if (!currentUser) {
+    hr.innerHTML = '<div class="header-badge">Fee Payment Portal</div>';
+  } else if (currentUser === 'admin') {
+    hr.innerHTML = `<span style="font-size:0.8rem;color:rgba(255,255,255,0.7);">Admin</span>
+      <div class="header-badge" style="background:rgba(201,168,76,0.25);border-color:var(--gold);">pallavanppt86</div>`;
+  } else {
+    hr.innerHTML = `<div class="header-badge">${escHtml(currentUser.name)}</div>`;
+  }
+}
+
+/* ── Login ── */
+function doLogin() {
+  const id  = document.getElementById('loginId').value.trim();
+  const pwd = document.getElementById('loginPwd').value;
+  clearAlert('loginAlert');
+
+  if (!id || !pwd) { showAlert('loginAlert','danger','Please enter both credentials.'); return; }
+
+  // Admin check
+  if (id === ADMIN_EMAIL && pwd === ADMIN_PWD) {
+    currentUser = 'admin';
+    updateHeader();
+    renderAdminDash();
+    showPage('pagAdmin');
+    return;
+  }
+
+  // Student check
+  const students = DB.getStudents();
+  const stu = students.find(s =>
+    (s.appId.toLowerCase() === id.toLowerCase() || (s.email && s.email.toLowerCase() === id.toLowerCase()))
+    && s.password === pwd
+  );
+  if (!stu) { showAlert('loginAlert','danger','Invalid credentials. Please check your Application ID and password.'); return; }
+
+  currentUser = stu;
+  updateHeader();
+  renderStudentDash();
+  showPage('pagStudent');
+}
+
+/* ── Logout ── */
+function doLogout() {
+  currentUser = null;
+  updateHeader();
+  document.getElementById('loginId').value = '';
+  document.getElementById('loginPwd').value = '';
+  showPage('pagLogin');
+}
+
+/* ── Register ── */
+function doRegister() {
+  clearAlert('registerAlert');
+  const f = {
+    appId:        v('rAppId'),
+    admYear:      v('rYear'),
+    studyYear:    v('rStudyYear'),
+    course:       v('rCourse'),
+    name:         v('rName'),
+    dob:          v('rDob'),
+    gender:       v('rGender'),
+    community:    v('rCommunity'),
+    aadhar:       v('rAadhar'),
+    address:      v('rAddress'),
+    mobile:       v('rMobile'),
+    email:        v('rEmail'),
+    fatherName:   v('rFatherName'),
+    fatherMobile: v('rFatherMobile'),
+    motherName:   v('rMotherName'),
+    motherMobile: v('rMotherMobile'),
+    password:     v('rPwd'),
+  };
+  const pwd2 = v('rPwd2');
+
+  const req = ['appId','admYear','studyYear','course','name','dob','gender','community','aadhar','address','mobile','fatherName','fatherMobile','motherName','motherMobile','password'];
+  for (const k of req) {
+    if (!f[k]) { showAlert('registerAlert','danger','Please fill in all required fields.'); return; }
+  }
+  if (f.mobile.length !== 10 || !/^\d+$/.test(f.mobile)) {
+    showAlert('registerAlert','danger','Mobile number must be exactly 10 digits.'); return;
+  }
+  if (f.aadhar.length !== 12 || !/^\d+$/.test(f.aadhar)) {
+    showAlert('registerAlert','danger','Aadhar number must be exactly 12 digits.'); return;
+  }
+  if (f.password.length < 6) {
+    showAlert('registerAlert','danger','Password must be at least 6 characters.'); return;
+  }
+  if (f.password !== pwd2) {
+    showAlert('registerAlert','danger','Passwords do not match.'); return;
+  }
+
+  const students = DB.getStudents();
+  if (students.find(s => s.appId.toLowerCase() === f.appId.toLowerCase())) {
+    showAlert('registerAlert','danger','An account with this Application ID already exists.'); return;
+  }
+
+  const settings = DB.getSettings();
+  f.fees = {
+    year1: { due: settings.defFee1 || 0, paid: 0 },
+    year2: { due: settings.defFee2 || 0, paid: 0 },
+    year3: { due: settings.defFee3 || 0, paid: 0 },
+  };
+  f.payments = [];
+  f.registeredAt = new Date().toISOString();
+
+  students.push(f);
+  DB.setStudents(students);
+  showAlert('registerAlert','success','Account created successfully! You can now sign in.');
+  setTimeout(() => showPage('pagLogin'), 1800);
+}
+
+/* ── Student Dashboard ── */
+function renderStudentDash() {
+  const s = currentUser;
+  document.getElementById('sWelcomeName').textContent = 'Welcome, ' + s.name;
+  document.getElementById('sWelcomeMeta').textContent =
+    s.course + ' · ' + s.studyYear + ' · Admission Year: ' + s.admYear;
+  document.getElementById('sAppId').textContent = s.appId;
+  document.getElementById('sDashSubtitle').textContent =
+    'Pallavan Polytechnic College · ' + s.course;
+
+  const upiId = DB.getSettings().upiId || '—';
+  document.getElementById('upiDisplay').textContent = upiId || 'College UPI ID — To be configured';
+
+  // Fees
+  const f = s.fees || { year1:{due:0,paid:0}, year2:{due:0,paid:0}, year3:{due:0,paid:0} };
+  const due1 = Math.max(0, (f.year1.due||0) - (f.year1.paid||0));
+  const due2 = Math.max(0, (f.year2.due||0) - (f.year2.paid||0));
+  const due3 = Math.max(0, (f.year3.due||0) - (f.year3.paid||0));
+  const totalPaid = (f.year1.paid||0) + (f.year2.paid||0) + (f.year3.paid||0);
+  const totalDue = due1 + due2 + due3;
+
+  document.getElementById('sFeeCards').innerHTML = `
+    <div class="fee-card due">
+      <div class="card-label">Current Year Due</div>
+      <div class="card-amount"><span>₹</span>${fmt(due1)}</div>
+      <div class="card-note">${s.studyYear} fees</div>
+    </div>
+    <div class="fee-card overdue">
+      <div class="card-label">Arrear Dues</div>
+      <div class="card-amount"><span>₹</span>${fmt(due2 + due3)}</div>
+      <div class="card-note">Previous year unpaid fees</div>
+    </div>
+    <div class="fee-card total">
+      <div class="card-label">Total Outstanding</div>
+      <div class="card-amount"><span>₹</span>${fmt(totalDue)}</div>
+      <div class="card-note">Total dues as on today</div>
+    </div>
+    <div class="fee-card paid">
+      <div class="card-label">Total Paid</div>
+      <div class="card-amount"><span>₹</span>${fmt(totalPaid)}</div>
+      <div class="card-note">All payments combined</div>
+    </div>
+  `;
+
+  // Year-wise breakdown
+  const years = [
+    { label:'1st Year', key:'year1', fee: f.year1 },
+    { label:'2nd Year', key:'year2', fee: f.year2 },
+    { label:'3rd Year', key:'year3', fee: f.year3 },
+  ];
+  let ywHTML = '';
+  years.forEach(y => {
+    const d = Math.max(0, (y.fee.due||0) - (y.fee.paid||0));
+    const isActive = s.studyYear && s.studyYear.startsWith(y.label.split(' ')[0]);
+    ywHTML += `
+      <div class="fee-year-row">
+        <div>
+          <span class="fee-status-dot ${d===0?'dot-green':isActive?'dot-gold':'dot-red'}"></span>
+          <strong>${y.label}</strong>
+          ${isActive ? '<span class="badge badge-purple" style="margin-left:8px;font-size:0.7rem;">Current</span>' : ''}
+        </div>
+        <div class="d-flex gap-12 align-center">
+          <div class="text-muted" style="font-size:0.82rem;">Fees: ₹${fmt(y.fee.due||0)}</div>
+          <div class="text-muted" style="font-size:0.82rem;">Paid: <span style="color:var(--success)">₹${fmt(y.fee.paid||0)}</span></div>
+          <div style="min-width:100px;text-align:right;">
+            ${d===0
+              ? '<span class="badge badge-green">Cleared</span>'
+              : `<span class="badge badge-red">Due: ₹${fmt(d)}</span>`
+            }
+          </div>
+        </div>
+      </div>`;
+  });
+  document.getElementById('sYearwiseDues').innerHTML = ywHTML || '<p class="text-muted">No fee data set.</p>';
+
+  // Payment history
+  const pays = (s.payments || []).slice().reverse();
+  if (pays.length === 0) {
+    document.getElementById('sPayHistory').innerHTML = '<p class="text-muted">No payments recorded yet.</p>';
+  } else {
+    document.getElementById('sPayHistory').innerHTML = pays.map(p => `
+      <div class="pay-entry">
+        <div class="pay-left">
+          <div class="pay-icon ${p.status==='Confirmed'?'paid':'pending'}">
+            ${p.status==='Confirmed' ? '✓' : '⏳'}
+          </div>
+          <div>
+            <div style="font-weight:500;font-size:0.9rem;">₹${fmt(p.amount)} — ${escHtml(p.forLabel)}</div>
+            <div class="text-muted">${formatDate(p.date)}</div>
+          </div>
+        </div>
+        <div>
+          <span class="badge ${p.status==='Confirmed'?'badge-green':'badge-gold'}">${p.status}</span>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+/* ── Student payment ── */
+function markPayment() {
+  clearAlert('sPayAlert');
+  const amt = parseFloat(document.getElementById('sPayAmount').value);
+  const forLabel = document.getElementById('sPayFor').value;
+  if (!amt || amt <= 0) { showAlert('sPayAlert','danger','Please enter a valid payment amount.'); return; }
+
+  const upiId = DB.getSettings().upiId;
+  if (!upiId) { showAlert('sPayAlert','warning','Payment UPI ID not yet configured by the college. Please contact the office.'); return; }
+
+  // Record pending payment
+  const students = DB.getStudents();
+  const idx = students.findIndex(s => s.appId === currentUser.appId);
+  if (idx < 0) return;
+  const payment = { amount: amt, forLabel, date: new Date().toISOString(), status: 'Pending Verification' };
+  students[idx].payments = students[idx].payments || [];
+  students[idx].payments.push(payment);
+  DB.setStudents(students);
+  currentUser = students[idx];
+
+  showAlert('sPayAlert','success',`Payment of ₹${fmt(amt)} submitted for verification. The college will confirm within 1–2 working days.`);
+  document.getElementById('sPayAmount').value = '';
+  renderStudentDash();
+}
+
+/* ── Admin Dashboard ── */
+function renderAdminDash() {
+  const students = DB.getStudents();
+  const settings = DB.getSettings();
+
+  // Populate settings fields
+  document.getElementById('adminUpiId').value = settings.upiId || '';
+  document.getElementById('adminAccNo').value = settings.accNo || '';
+  document.getElementById('defFee1').value = settings.defFee1 || '';
+  document.getElementById('defFee2').value = settings.defFee2 || '';
+  document.getElementById('defFee3').value = settings.defFee3 || '';
+
+  // Stats
+  let totalDueAll = 0, totalPaidAll = 0;
+  students.forEach(s => {
+    const f = s.fees || {};
+    ['year1','year2','year3'].forEach(y => {
+      totalDueAll += f[y]?.due||0;
+      totalPaidAll += f[y]?.paid||0;
+    });
+  });
+  const totalOutstanding = Math.max(0, totalDueAll - totalPaidAll);
+
+  document.getElementById('adminStats').innerHTML = `
+    <div class="fee-card due">
+      <div class="card-label">Total Students</div>
+      <div class="card-amount">${students.length}</div>
+      <div class="card-note">Registered on portal</div>
+    </div>
+    <div class="fee-card total">
+      <div class="card-label">Total Outstanding</div>
+      <div class="card-amount"><span>₹</span>${fmt(totalOutstanding)}</div>
+      <div class="card-note">Across all students</div>
+    </div>
+    <div class="fee-card paid">
+      <div class="card-label">Total Collected</div>
+      <div class="card-amount"><span>₹</span>${fmt(totalPaidAll)}</div>
+      <div class="card-note">All confirmed payments</div>
+    </div>
+    <div class="fee-card">
+      <div class="card-label">Total Fees Billed</div>
+      <div class="card-amount"><span>₹</span>${fmt(totalDueAll)}</div>
+      <div class="card-note">Gross fee billed</div>
+    </div>
+  `;
+
+  // Pending approvals
+  const pending = [];
+  students.forEach(s => {
+    (s.payments||[]).forEach((p,pi) => {
+      if (p.status === 'Pending Verification') pending.push({ stu:s, payment:p, payIdx:pi });
+    });
+  });
+  document.getElementById('pendingCount').textContent = pending.length + ' pending';
+  if (pending.length === 0) {
+    document.getElementById('pendingApprovalsList').innerHTML = '<p class="text-muted">No pending verifications.</p>';
+  } else {
+    document.getElementById('pendingApprovalsList').innerHTML = `
+      <div class="table-wrap" style="border:none;box-shadow:none;">
+        <table>
+          <thead><tr><th>Student</th><th>App ID</th><th>Amount</th><th>For</th><th>Date</th><th>Action</th></tr></thead>
+          <tbody>
+            ${pending.map(({stu,payment,payIdx}) => `
+              <tr>
+                <td>${escHtml(stu.name)}</td>
+                <td class="muted">${escHtml(stu.appId)}</td>
+                <td><strong>₹${fmt(payment.amount)}</strong></td>
+                <td>${escHtml(payment.forLabel)}</td>
+                <td class="muted">${formatDate(payment.date)}</td>
+                <td>
+                  <button class="btn btn-sm" style="background:var(--success-bg);color:var(--success);border:1px solid rgba(27,107,58,0.2);" onclick="confirmPayment('${escAttr(stu.appId)}',${payIdx})">✓ Confirm</button>
+                  &nbsp;
+                  <button class="btn btn-danger btn-sm" onclick="rejectPayment('${escAttr(stu.appId)}',${payIdx})">✕ Reject</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  renderStudentTable();
+}
+
+function renderStudentTable() {
+  const q   = (document.getElementById('adminSearch')?.value||'').toLowerCase();
+  const fy  = document.getElementById('adminFilterYear')?.value||'';
+  const students = DB.getStudents();
+
+  const filtered = students.filter(s => {
+    const matchQ = !q || s.name.toLowerCase().includes(q) || s.appId.toLowerCase().includes(q);
+    const matchY = !fy || s.studyYear === fy;
+    return matchQ && matchY;
+  });
+
+  const tbody = document.getElementById('studentTableBody');
+  if (!tbody) return;
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-muted);">No students found.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(s => {
+    const f = s.fees || {};
+    const totalDue  = ['year1','year2','year3'].reduce((a,y)=>a+(f[y]?.due||0),0);
+    const totalPaid = ['year1','year2','year3'].reduce((a,y)=>a+(f[y]?.paid||0),0);
+    const outstanding = Math.max(0, totalDue - totalPaid);
+    const hasPending = (s.payments||[]).some(p=>p.status==='Pending Verification');
+    return `
+      <tr class="click-row">
+        <td class="muted">${escHtml(s.appId)}</td>
+        <td style="font-weight:500;">${escHtml(s.name)}</td>
+        <td class="muted" style="font-size:0.8rem;">${escHtml(s.course||'').replace('Diploma in ','')}</td>
+        <td>${escHtml(s.studyYear||'')}</td>
+        <td class="muted">${escHtml(s.mobile||'')}</td>
+        <td><strong>₹${fmt(outstanding)}</strong></td>
+        <td>
+          ${outstanding===0
+            ? '<span class="badge badge-green">Cleared</span>'
+            : hasPending
+              ? '<span class="badge badge-gold">Pay. Pending</span>'
+              : '<span class="badge badge-red">Due</span>'
+          }
+        </td>
+        <td>
+          <button class="btn btn-primary btn-sm" onclick="openStudentModal('${escAttr(s.appId)}')">View / Edit</button>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+/* ── Admin: save settings ── */
+function savePaymentSettings() {
+  const s = DB.getSettings();
+  s.upiId = document.getElementById('adminUpiId').value.trim();
+  s.accNo = document.getElementById('adminAccNo').value.trim();
+  DB.setSettings(s);
+  const msg = document.getElementById('settingsSavedMsg');
+  msg.style.display='inline'; setTimeout(()=>msg.style.display='none',2500);
+}
+function saveDefaultFees() {
+  const s = DB.getSettings();
+  s.defFee1 = parseFloat(document.getElementById('defFee1').value)||0;
+  s.defFee2 = parseFloat(document.getElementById('defFee2').value)||0;
+  s.defFee3 = parseFloat(document.getElementById('defFee3').value)||0;
+  DB.setSettings(s);
+  const msg = document.getElementById('feeSavedMsg');
+  msg.style.display='inline'; setTimeout(()=>msg.style.display='none',2500);
+}
+
+/* ── Admin: payment approval ── */
+function confirmPayment(appId, payIdx) {
+  const students = DB.getStudents();
+  const s = students.find(x=>x.appId===appId);
+  if (!s) return;
+  const p = s.payments[payIdx];
+  p.status = 'Confirmed';
+  // Add to paid amount
+  const forLabel = p.forLabel.toLowerCase();
+  if (forLabel.includes('arrear') || forLabel.includes('previous')) {
+    // apply to oldest unpaid year first
+    for (const y of ['year1','year2','year3']) {
+      const d = (s.fees[y].due||0) - (s.fees[y].paid||0);
+      if (d > 0) { s.fees[y].paid = (s.fees[y].paid||0) + Math.min(p.amount, d); break; }
+    }
+  } else {
+    // apply to current year
+    const yMap = {'1st Year':'year1','2nd Year':'year2','3rd Year':'year3'};
+    const k = yMap[s.studyYear] || 'year1';
+    s.fees[k].paid = (s.fees[k].paid||0) + p.amount;
+  }
+  DB.setStudents(students);
+  renderAdminDash();
+}
+function rejectPayment(appId, payIdx) {
+  const students = DB.getStudents();
+  const s = students.find(x=>x.appId===appId);
+  if (!s) return;
+  s.payments[payIdx].status = 'Rejected';
+  DB.setStudents(students);
+  renderAdminDash();
+}
+
+/* ── Modal: view/edit student ── */
+function openStudentModal(appId) {
+  const students = DB.getStudents();
+  const s = students.find(x=>x.appId===appId);
+  if (!s) return;
+
+  document.getElementById('modalStudentTitle').textContent = s.name + ' — ' + s.appId;
+  const f = s.fees || { year1:{due:0,paid:0}, year2:{due:0,paid:0}, year3:{due:0,paid:0} };
+
+  document.getElementById('modalContent').innerHTML = `
+    <div class="section-divider">Personal & Academic Info</div>
+    <div class="form-grid-2">
+      <div class="form-group"><label>Full Name</label><input class="form-control" id="mName" value="${escAttr(s.name)}"></div>
+      <div class="form-group"><label>Application ID</label><input class="form-control" id="mAppId" value="${escAttr(s.appId)}" disabled style="background:#f0f0f0;"></div>
+      <div class="form-group"><label>Programme</label><input class="form-control" id="mCourse" value="${escAttr(s.course||'')}"></div>
+      <div class="form-group"><label>Year of Study</label>
+        <select class="form-control" id="mStudyYear">
+          <option ${s.studyYear==='1st Year'?'selected':''}>1st Year</option>
+          <option ${s.studyYear==='2nd Year'?'selected':''}>2nd Year</option>
+          <option ${s.studyYear==='3rd Year'?'selected':''}>3rd Year</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Mobile</label><input class="form-control" id="mMobile" value="${escAttr(s.mobile||'')}"></div>
+      <div class="form-group"><label>Email</label><input class="form-control" id="mEmail" value="${escAttr(s.email||'')}"></div>
+      <div class="form-group"><label>Father's Name</label><input class="form-control" id="mFather" value="${escAttr(s.fatherName||'')}"></div>
+      <div class="form-group"><label>Mother's Name</label><input class="form-control" id="mMother" value="${escAttr(s.motherName||'')}"></div>
+      <div class="form-group"><label>Admission Year</label><input class="form-control" id="mAdmYear" value="${escAttr(s.admYear||'')}"></div>
+      <div class="form-group"><label>Community</label><input class="form-control" id="mCommunity" value="${escAttr(s.community||'')}"></div>
+    </div>
+    <div class="form-group"><label>Address</label><textarea class="form-control" id="mAddress" rows="2">${escHtml(s.address||'')}</textarea></div>
+
+    <div class="section-divider" style="margin-top:24px;">Fee Structure (Set by Admin)</div>
+    <div class="form-grid-3">
+      <div class="form-group"><label>1st Year — Total Fee (₹)</label><input type="number" class="form-control" id="mFee1Due" value="${f.year1.due||0}"></div>
+      <div class="form-group"><label>2nd Year — Total Fee (₹)</label><input type="number" class="form-control" id="mFee2Due" value="${f.year2.due||0}"></div>
+      <div class="form-group"><label>3rd Year — Total Fee (₹)</label><input type="number" class="form-control" id="mFee3Due" value="${f.year3.due||0}"></div>
+      <div class="form-group"><label>1st Year — Paid (₹)</label><input type="number" class="form-control" id="mFee1Paid" value="${f.year1.paid||0}"></div>
+      <div class="form-group"><label>2nd Year — Paid (₹)</label><input type="number" class="form-control" id="mFee2Paid" value="${f.year2.paid||0}"></div>
+      <div class="form-group"><label>3rd Year — Paid (₹)</label><input type="number" class="form-control" id="mFee3Paid" value="${f.year3.paid||0}"></div>
+    </div>
+
+    <div class="section-divider" style="margin-top:24px;">Payment History</div>
+    ${(() => {
+      const pays = (s.payments||[]);
+      if (!pays.length) return '<p class="text-muted">No payments recorded.</p>';
+      return `<div class="table-wrap" style="border:none;box-shadow:none;"><table>
+        <thead><tr><th>Date</th><th>Amount</th><th>For</th><th>Status</th></tr></thead>
+        <tbody>
+          ${pays.map(p=>`<tr>
+            <td class="muted">${formatDate(p.date)}</td>
+            <td><strong>₹${fmt(p.amount)}</strong></td>
+            <td>${escHtml(p.forLabel)}</td>
+            <td><span class="badge ${p.status==='Confirmed'?'badge-green':p.status==='Rejected'?'badge-red':'badge-gold'}">${p.status}</span></td>
+          </tr>`).join('')}
+        </tbody>
+      </table></div>`;
+    })()}
+
+    <div class="d-flex gap-12 mt-24">
+      <button class="btn btn-primary" style="flex:1;" onclick="saveStudentEdit('${escAttr(appId)}')">Save All Changes</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteStudent('${escAttr(appId)}')">Delete Student</button>
+    </div>
+    <div id="modalSaveMsg" style="margin-top:12px;"></div>
+  `;
+
+  document.getElementById('studentModal').classList.add('open');
+}
+
+function saveStudentEdit(appId) {
+  const students = DB.getStudents();
+  const idx = students.findIndex(s=>s.appId===appId);
+  if (idx<0) return;
+  const s = students[idx];
+  s.name        = document.getElementById('mName').value;
+  s.course      = document.getElementById('mCourse').value;
+  s.studyYear   = document.getElementById('mStudyYear').value;
+  s.mobile      = document.getElementById('mMobile').value;
+  s.email       = document.getElementById('mEmail').value;
+  s.fatherName  = document.getElementById('mFather').value;
+  s.motherName  = document.getElementById('mMother').value;
+  s.admYear     = document.getElementById('mAdmYear').value;
+  s.community   = document.getElementById('mCommunity').value;
+  s.address     = document.getElementById('mAddress').value;
+  s.fees = {
+    year1: { due: parseFloat(document.getElementById('mFee1Due').value)||0, paid: parseFloat(document.getElementById('mFee1Paid').value)||0 },
+    year2: { due: parseFloat(document.getElementById('mFee2Due').value)||0, paid: parseFloat(document.getElementById('mFee2Paid').value)||0 },
+    year3: { due: parseFloat(document.getElementById('mFee3Due').value)||0, paid: parseFloat(document.getElementById('mFee3Paid').value)||0 },
+  };
+  DB.setStudents(students);
+  const msg = document.getElementById('modalSaveMsg');
+  msg.innerHTML = '<div class="alert alert-success">✓ Student details updated successfully.</div>';
+  setTimeout(()=>{ msg.innerHTML=''; renderAdminDash(); }, 2000);
+}
+
+function deleteStudent(appId) {
+  if (!confirm('Are you sure you want to permanently delete this student\'s account? This action cannot be undone.')) return;
+  let students = DB.getStudents();
+  students = students.filter(s=>s.appId!==appId);
+  DB.setStudents(students);
+  closeModal();
+  renderAdminDash();
+}
+
+function closeModal() {
+  document.getElementById('studentModal').classList.remove('open');
+}
+
+/* ── Utility ── */
+function v(id) { return (document.getElementById(id)?.value||'').trim(); }
+function fmt(n) { return (Math.round(n)||0).toLocaleString('en-IN'); }
+function formatDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) + ' ' +
+    d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+}
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s) { return String(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+
+function showAlert(id, type, msg) {
+  document.getElementById(id).innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+}
+function clearAlert(id) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = '';
+}
+
+// Close modal on backdrop click
+document.getElementById('studentModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// Allow Enter key on login
+document.addEventListener('keydown', e => {
+  if (e.key==='Enter' && document.getElementById('pagLogin').classList.contains('active')) doLogin();
+});
+</script>
+</body>
+</html>
