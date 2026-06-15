@@ -8,9 +8,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-<!-- Firebase v9 compat (CDN) -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<!-- Firebase v10 compat (CDN) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -681,9 +681,7 @@ textarea.form-control{resize:vertical;min-height:80px}
 
 <script>
 // ═══════════════════════════════════
-//  FIREBASE CONFIG
-//  Using a free public Firebase project for Pallavan Fee Portal
-//  Replace with your own project config from https://console.firebase.google.com
+//  FIREBASE CONFIG — Pallavan Polytechnic College
 // ═══════════════════════════════════
 const firebaseConfig = {
   apiKey: "AIzaSyBbHk8jje1FLSHFd_4M0JNIRODG11aHlEc",
@@ -696,28 +694,34 @@ const firebaseConfig = {
 };
 
 // ═══════════════════════════════════
-//  DUAL-MODE DB: Firebase (cloud) with localStorage fallback
-//  When Firebase credentials are configured properly, all data
-//  is stored in Firestore and accessible from any device/browser.
-//  Until then, localStorage is used as fallback.
+//  DB: Firebase Firestore (cloud, cross-device)
+//  Falls back to localStorage only if Firebase is completely unreachable
 // ═══════════════════════════════════
 
 let db = null;
 let useFirebase = false;
 
 async function initDB() {
-  setLoading(true, "Initialising database…");
+  setLoading(true, "Connecting to database…");
   try {
-    firebase.initializeApp(firebaseConfig);
+    // Prevent duplicate app init on hot reload
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
     db = firebase.firestore();
-    // Test connectivity with a short timeout
-    const testPromise = db.collection("_ping").doc("test").get();
-    const timeoutPromise = new Promise((_,rej) => setTimeout(()=>rej(new Error("timeout")), 4000));
-    await Promise.race([testPromise, timeoutPromise]);
+    // Enable offline persistence so it works even with brief network drops
+    try {
+      await db.enablePersistence({ synchronizeTabs: true });
+    } catch(pe) {
+      // persistence errors are non-fatal (e.g. multiple tabs)
+      console.warn("Persistence:", pe.code);
+    }
+    // Verify real connectivity
+    await db.collection("config").doc("settings").get();
     useFirebase = true;
-    console.log("✅ Firebase connected");
+    console.log("✅ Firestore connected — project: ppt86-95c61");
   } catch(e) {
-    console.warn("⚠️ Firebase not configured or unreachable, using localStorage fallback:", e.message);
+    console.warn("⚠️ Firestore unavailable, falling back to localStorage:", e.message);
     useFirebase = false;
   }
   setLoading(false);
