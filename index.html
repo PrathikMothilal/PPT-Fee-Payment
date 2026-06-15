@@ -11,6 +11,8 @@
 <!-- Firebase v10 compat (CDN) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<!-- jsPDF for PDF receipt generation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -599,6 +601,10 @@ textarea.form-control{resize:vertical;min-height:80px}
               <span class="setting-label">Bank Account No.</span>
               <span class="setting-val" id="viewAccNo"><em class="text-muted">Not set</em></span>
             </div>
+            <div class="setting-row">
+              <span class="setting-label">Fast2SMS API Key</span>
+              <span class="setting-val" id="viewSmsKey"><em class="text-muted">Not set</em></span>
+            </div>
           </div>
           <!-- Edit form -->
           <div id="paySettingsEdit" style="display:none">
@@ -609,6 +615,10 @@ textarea.form-control{resize:vertical;min-height:80px}
             <div class="form-group">
               <label>Bank Account Number</label>
               <input type="text" id="adminAccNo" class="form-control" placeholder="College bank account number">
+            </div>
+            <div class="form-group">
+              <label>Fast2SMS API Key <span class="optional">(for SMS alerts)</span></label>
+              <input type="text" id="adminSmsKey" class="form-control" placeholder="Get free key at fast2sms.com">
             </div>
             <div class="d-flex gap-8">
               <button class="btn btn-primary btn-sm" onclick="savePaymentSettings()">Save Changes</button>
@@ -1015,7 +1025,7 @@ function renderStudentDash() {
   const pays = (s.payments||[]).slice().reverse();
   document.getElementById("sPayHistory").innerHTML = pays.length===0
     ? '<p class="text-muted">No payments recorded yet.</p>'
-    : pays.map(p=>`
+    : pays.map((p,i)=>`
       <div class="pay-entry">
         <div class="pay-left">
           <div class="pay-icon ${p.status==='Confirmed'?'confirmed':p.status==='Rejected'?'rejected':'pending'}">
@@ -1023,10 +1033,13 @@ function renderStudentDash() {
           </div>
           <div>
             <div style="font-weight:500;font-size:0.9rem">₹${fmt(p.amount)} — ${escHtml(p.forLabel)}</div>
-            <div class="text-muted">${formatDate(p.date)}</div>
+            <div class="text-muted">${formatDate(p.date)}${p.receiptNo ? ' · Receipt: '+p.receiptNo : ''}</div>
           </div>
         </div>
-        <span class="badge ${p.status==='Confirmed'?'badge-green':p.status==='Rejected'?'badge-red':'badge-gold'}">${p.status}</span>
+        <div class="d-flex align-center gap-8">
+          <span class="badge ${p.status==='Confirmed'?'badge-green':p.status==='Rejected'?'badge-red':'badge-gold'}">${p.status}</span>
+          ${p.status==='Confirmed' ? `<button class="btn btn-outline btn-sm" style="font-size:0.75rem;padding:5px 10px" onclick="downloadReceipt(${(s.payments||[]).length-1-i})">⬇ Receipt</button>` : ''}
+        </div>
       </div>`).join("");
 }
 
@@ -1071,15 +1084,17 @@ async function renderAdminDash() {
     // Populate settings display
     document.getElementById("viewUpiId").innerHTML  = settings.upiId  ? escHtml(settings.upiId)  : '<em class="text-muted">Not set</em>';
     document.getElementById("viewAccNo").innerHTML  = settings.accNo  ? escHtml(settings.accNo)  : '<em class="text-muted">Not set</em>';
+    document.getElementById("viewSmsKey").innerHTML = settings.smsKey ? '••••••••••••' : '<em class="text-muted">Not set</em>';
     document.getElementById("viewFee1").textContent = "₹" + fmt(settings.defFee1||0);
     document.getElementById("viewFee2").textContent = "₹" + fmt(settings.defFee2||0);
     document.getElementById("viewFee3").textContent = "₹" + fmt(settings.defFee3||0);
     // Populate edit fields too
-    if (document.getElementById("adminUpiId")) document.getElementById("adminUpiId").value = settings.upiId||"";
-    if (document.getElementById("adminAccNo"))  document.getElementById("adminAccNo").value  = settings.accNo||"";
-    if (document.getElementById("defFee1"))     document.getElementById("defFee1").value     = settings.defFee1||"";
-    if (document.getElementById("defFee2"))     document.getElementById("defFee2").value     = settings.defFee2||"";
-    if (document.getElementById("defFee3"))     document.getElementById("defFee3").value     = settings.defFee3||"";
+    if (document.getElementById("adminUpiId"))  document.getElementById("adminUpiId").value  = settings.upiId||"";
+    if (document.getElementById("adminAccNo"))   document.getElementById("adminAccNo").value   = settings.accNo||"";
+    if (document.getElementById("adminSmsKey"))  document.getElementById("adminSmsKey").value  = settings.smsKey||"";
+    if (document.getElementById("defFee1"))      document.getElementById("defFee1").value      = settings.defFee1||"";
+    if (document.getElementById("defFee2"))      document.getElementById("defFee2").value      = settings.defFee2||"";
+    if (document.getElementById("defFee3"))      document.getElementById("defFee3").value      = settings.defFee3||"";
 
     // Pending approvals
     const pending = [];
@@ -1180,13 +1195,15 @@ function cancelEditSection(section) {
 
 async function savePaymentSettings() {
   const s = await DB.getSettings();
-  s.upiId = document.getElementById("adminUpiId").value.trim();
-  s.accNo = document.getElementById("adminAccNo").value.trim();
+  s.upiId  = document.getElementById("adminUpiId").value.trim();
+  s.accNo  = document.getElementById("adminAccNo").value.trim();
+  s.smsKey = document.getElementById("adminSmsKey").value.trim();
   setLoading(true,"Saving…");
   await DB.setSettings(s);
   setLoading(false);
-  document.getElementById("viewUpiId").innerHTML = s.upiId ? escHtml(s.upiId) : '<em class="text-muted">Not set</em>';
-  document.getElementById("viewAccNo").innerHTML = s.accNo ? escHtml(s.accNo) : '<em class="text-muted">Not set</em>';
+  document.getElementById("viewUpiId").innerHTML  = s.upiId  ? escHtml(s.upiId)  : '<em class="text-muted">Not set</em>';
+  document.getElementById("viewAccNo").innerHTML  = s.accNo  ? escHtml(s.accNo)  : '<em class="text-muted">Not set</em>';
+  document.getElementById("viewSmsKey").innerHTML = s.smsKey ? '••••••••••••' : '<em class="text-muted">Not set</em>';
   const msg=document.getElementById("settingsSavedMsg");
   msg.style.display="block"; setTimeout(()=>{msg.style.display="none"; cancelEditSection("paySettings");},1500);
 }
@@ -1215,6 +1232,10 @@ async function confirmPayment(appId, payIdx) {
     if (!stu) { setLoading(false); return; }
     const p = stu.payments[payIdx];
     p.status = "Confirmed";
+    p.confirmedAt = new Date().toISOString();
+    // Generate receipt number
+    p.receiptNo = "PPT" + new Date().getFullYear() + String(Date.now()).slice(-6);
+
     const forLabel = (p.forLabel||"").toLowerCase();
     if (forLabel.includes("arrear")||forLabel.includes("previous")) {
       for (const y of ["year1","year2","year3"]) {
@@ -1227,6 +1248,13 @@ async function confirmPayment(appId, payIdx) {
       stu.fees[k].paid=(stu.fees[k].paid||0)+p.amount;
     }
     await DB.setStudent(stu);
+
+    // Send SMS notification
+    const settings = await DB.getSettings();
+    if (settings.smsKey && stu.mobile) {
+      await sendSMS(settings.smsKey, stu, p);
+    }
+
     setLoading(false);
     await renderAdminDash();
   } catch(e) { setLoading(false); alert("Error: "+e.message); }
@@ -1242,6 +1270,255 @@ async function rejectPayment(appId, payIdx) {
     setLoading(false);
     await renderAdminDash();
   } catch(e) { setLoading(false); }
+}
+
+// ═══════════════════════════════════
+//  SMS — Fast2SMS
+// ═══════════════════════════════════
+async function sendSMS(apiKey, stu, payment) {
+  const totalPaid = ["year1","year2","year3"].reduce((a,y)=>a+(stu.fees?.[y]?.paid||0),0);
+  const totalDue  = ["year1","year2","year3"].reduce((a,y)=>a+(stu.fees?.[y]?.due||0),0);
+  const outstanding = Math.max(0, totalDue - totalPaid);
+
+  const msg =
+    `Dear ${stu.name}, your fee payment of Rs.${fmt(payment.amount)} for ${payment.forLabel} ` +
+    `has been CONFIRMED by Pallavan Polytechnic College. ` +
+    `Receipt No: ${payment.receiptNo}. ` +
+    `Total outstanding balance: Rs.${fmt(outstanding)}. ` +
+    `Thank you. -Pallavan Polytechnic College, Kolivakkam`;
+
+  try {
+    // Fast2SMS Quick SMS API (DLT not required for transactional under 160 chars on quick route)
+    const url = `https://www.fast2sms.com/dev/bulkV2?authorization=${encodeURIComponent(apiKey)}&message=${encodeURIComponent(msg)}&language=english&route=q&numbers=${stu.mobile}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.return === true) {
+      console.log("✅ SMS sent to", stu.mobile);
+    } else {
+      console.warn("SMS API response:", data.message||JSON.stringify(data));
+    }
+  } catch(e) {
+    console.warn("SMS send failed (non-critical):", e.message);
+  }
+}
+
+// ═══════════════════════════════════
+//  PDF RECEIPT GENERATOR
+// ═══════════════════════════════════
+function generateReceipt(stu, payment) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:"portrait", unit:"mm", format:"a4" });
+  const W = 210, H = 297;
+  const royal = [61, 26, 110];
+  const gold  = [201, 168, 76];
+  const cream = [253, 250, 244];
+  const dark  = [26, 26, 46];
+  const muted = [122, 122, 154];
+
+  // Background
+  doc.setFillColor(...cream);
+  doc.rect(0, 0, W, H, "F");
+
+  // Top header bar
+  doc.setFillColor(...royal);
+  doc.rect(0, 0, W, 42, "F");
+
+  // Gold accent bar
+  doc.setFillColor(...gold);
+  doc.rect(0, 42, W, 2, "F");
+
+  // College name
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(16);
+  doc.setTextColor(255,255,255);
+  doc.text("PALLAVAN POLYTECHNIC COLLEGE", W/2, 16, {align:"center"});
+
+  doc.setFont("helvetica","normal");
+  doc.setFontSize(9);
+  doc.setTextColor(201,168,76);
+  doc.text("Pallavan Educational Trust · AICTE Approved · College Code: 370", W/2, 23, {align:"center"});
+
+  doc.setFontSize(8);
+  doc.setTextColor(200,200,220);
+  doc.text("Kolivakkam, Kanchipuram, Tamil Nadu – 631 502", W/2, 29, {align:"center"});
+
+  // Receipt title
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(11);
+  doc.setTextColor(255,255,255);
+  doc.text("FEE PAYMENT RECEIPT", W/2, 37, {align:"center"});
+
+  // Receipt info box (top right)
+  doc.setFillColor(240, 235, 255);
+  doc.roundedRect(130, 50, 68, 28, 3, 3, "F");
+  doc.setDrawColor(...royal);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(130, 50, 68, 28, 3, 3, "S");
+
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(...royal);
+  doc.text("RECEIPT NO.", 134, 57);
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(9.5);
+  doc.text(payment.receiptNo || "—", 134, 63);
+
+  doc.setFont("helvetica","normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(...muted);
+  doc.text("DATE OF PAYMENT", 134, 70);
+  doc.setFont("helvetica","bold");
+  doc.setTextColor(...dark);
+  doc.setFontSize(8);
+  doc.text(formatDate(payment.confirmedAt||payment.date), 134, 76);
+
+  // Student details section
+  doc.setFillColor(255,255,255);
+  doc.roundedRect(12, 50, 112, 28, 3, 3, "F");
+  doc.setDrawColor(...royal);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(12, 50, 112, 28, 3, 3, "S");
+
+  // Purple left accent
+  doc.setFillColor(...royal);
+  doc.roundedRect(12, 50, 3, 28, 1.5, 1.5, "F");
+
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(7);
+  doc.setTextColor(...muted);
+  doc.text("STUDENT DETAILS", 19, 57);
+
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(10);
+  doc.setTextColor(...dark);
+  doc.text(stu.name.toUpperCase(), 19, 64);
+
+  doc.setFont("helvetica","normal");
+  doc.setFontSize(8);
+  doc.setTextColor(...muted);
+  doc.text(`App ID: ${stu.appId}  ·  ${stu.studyYear}  ·  Admitted: ${stu.admYear}`, 19, 70);
+  doc.text(stu.course, 19, 75);
+
+  // Payment details table
+  const tableY = 88;
+  // Table header
+  doc.setFillColor(...royal);
+  doc.rect(12, tableY, W-24, 9, "F");
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(8);
+  doc.setTextColor(255,255,255);
+  doc.text("DESCRIPTION", 18, tableY+6);
+  doc.text("DETAILS", 100, tableY+6);
+  doc.text("AMOUNT", 175, tableY+6, {align:"right"});
+
+  const rows = [
+    ["Payment For",         payment.forLabel,                                  ""],
+    ["Amount Paid",         "",                                                 `Rs. ${fmt(payment.amount)}`],
+    ["Payment Method",      "UPI Transfer",                                    ""],
+    ["Payment Status",      "CONFIRMED",                                       ""],
+    ["Mobile",              stu.mobile,                                        ""],
+    ["Programme",           stu.course,                                        ""],
+  ];
+
+  let rowY = tableY + 9;
+  rows.forEach((row, i) => {
+    doc.setFillColor(i%2===0 ? 255 : 248, i%2===0 ? 255 : 245, i%2===0 ? 255 : 255);
+    doc.rect(12, rowY, W-24, 9, "F");
+    doc.setDrawColor(230, 224, 240);
+    doc.setLineWidth(0.2);
+    doc.line(12, rowY+9, W-12, rowY+9);
+
+    doc.setFont("helvetica","bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(...muted);
+    doc.text(row[0], 18, rowY+6);
+
+    doc.setFont("helvetica","normal");
+    doc.setTextColor(...dark);
+    doc.text(row[1], 100, rowY+6);
+
+    if (row[2]) {
+      doc.setFont("helvetica","bold");
+      doc.setTextColor(...royal);
+      doc.setFontSize(9);
+      doc.text(row[2], 175, rowY+6, {align:"right"});
+    }
+    rowY += 9;
+  });
+
+  // Fee summary box
+  const sumY = rowY + 8;
+  doc.setFillColor(240, 235, 255);
+  doc.roundedRect(12, sumY, W-24, 36, 3, 3, "F");
+  doc.setDrawColor(...royal);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(12, sumY, W-24, 36, 3, 3, "S");
+
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(8);
+  doc.setTextColor(...royal);
+  doc.text("FEE SUMMARY", 18, sumY+8);
+
+  const f = stu.fees || {};
+  const totalDue  = (f.year1?.due||0)+(f.year2?.due||0)+(f.year3?.due||0);
+  const totalPaid = (f.year1?.paid||0)+(f.year2?.paid||0)+(f.year3?.paid||0);
+  const balance   = Math.max(0, totalDue - totalPaid);
+
+  const summaryItems = [
+    ["1st Year Fee:",  `Rs.${fmt(f.year1?.due||0)}`,  "Paid:",  `Rs.${fmt(f.year1?.paid||0)}`],
+    ["2nd Year Fee:",  `Rs.${fmt(f.year2?.due||0)}`,  "Paid:",  `Rs.${fmt(f.year2?.paid||0)}`],
+    ["3rd Year Fee:",  `Rs.${fmt(f.year3?.due||0)}`,  "Paid:",  `Rs.${fmt(f.year3?.paid||0)}`],
+  ];
+
+  let si = sumY + 15;
+  summaryItems.forEach(row => {
+    doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(...muted);
+    doc.text(row[0], 18, si);
+    doc.setFont("helvetica","bold"); doc.setTextColor(...dark);
+    doc.text(row[1], 55, si);
+    doc.setFont("helvetica","normal"); doc.setTextColor(...muted);
+    doc.text(row[2], 105, si);
+    doc.setFont("helvetica","bold"); doc.setTextColor(27,107,58);
+    doc.text(row[3], 120, si);
+    si += 7;
+  });
+
+  // Total outstanding
+  doc.setFillColor(...royal);
+  doc.roundedRect(130, sumY+6, 68, 24, 3, 3, "F");
+  doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.setTextColor(201,168,76);
+  doc.text("TOTAL OUTSTANDING", 164, sumY+14, {align:"center"});
+  doc.setFontSize(18); doc.setTextColor(255,255,255);
+  doc.text(`Rs.${fmt(balance)}`, 164, sumY+26, {align:"center"});
+
+  // Watermark-style PAID stamp if balance is 0
+  if (balance === 0) {
+    doc.setFont("helvetica","bold");
+    doc.setFontSize(48);
+    doc.setTextColor(27, 107, 58);
+    doc.setGState(new doc.GState({opacity:0.12}));
+    doc.text("PAID", W/2, H/2+20, {align:"center", angle:30});
+    doc.setGState(new doc.GState({opacity:1}));
+  }
+
+  // Footer
+  const footY = H - 30;
+  doc.setFillColor(...royal);
+  doc.rect(0, footY, W, 1, "F");
+
+  doc.setFont("helvetica","italic");
+  doc.setFontSize(7.5);
+  doc.setTextColor(...muted);
+  doc.text("This is a computer-generated receipt and does not require a physical signature.", W/2, footY+8, {align:"center"});
+  doc.text("For queries contact: Pallavan Polytechnic College, Kolivakkam, Kanchipuram, Tamil Nadu", W/2, footY+14, {align:"center"});
+
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(7);
+  doc.setTextColor(...royal);
+  doc.text("Pallavan Educational Trust © " + new Date().getFullYear(), W/2, footY+22, {align:"center"});
+
+  // Save PDF
+  doc.save(`PPT_Receipt_${payment.receiptNo||"fee"}_${stu.appId}.pdf`);
 }
 
 // ─── Student Modal ───
@@ -1340,6 +1617,26 @@ async function deleteStudent(appId) {
 }
 
 function closeModal() { document.getElementById("studentModal").classList.remove("open"); }
+
+// Student downloads their own receipt
+function downloadReceipt(payIdx) {
+  if (!currentUser || currentUser==="admin") return;
+  const payment = currentUser.payments?.[payIdx];
+  if (!payment || payment.status!=="Confirmed") {
+    alert("Receipt only available for confirmed payments."); return;
+  }
+  generateReceipt(currentUser, payment);
+}
+
+// Admin downloads receipt from student modal
+function adminDownloadReceipt(appId, payIdx) {
+  DB.getStudent(appId).then(stu => {
+    if (!stu) return;
+    const payment = stu.payments?.[payIdx];
+    if (!payment) return;
+    generateReceipt(stu, payment);
+  });
+}
 
 // ═══════════════════════════════════
 //  UTILITIES
