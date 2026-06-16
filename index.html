@@ -13,6 +13,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <!-- jsPDF for PDF receipt generation -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- QRCode.js for UPI QR -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -483,7 +485,7 @@ textarea.form-control{resize:vertical;min-height:80px}
       <div class="card-head"><h3>Make a Payment</h3></div>
       <div class="card-body">
         <div id="sPayAlert"></div>
-        <div class="form-grid-2" style="margin-bottom:18px">
+        <div class="form-grid-2" style="margin-bottom:20px">
           <div class="form-group" style="margin:0">
             <label>Amount to Pay (₹) <span class="required">*</span></label>
             <input type="number" id="sPayAmount" class="form-control" placeholder="Enter amount in rupees" min="0" step="1" oninput="enforceNonNeg(this)">
@@ -498,13 +500,59 @@ textarea.form-control{resize:vertical;min-height:80px}
             </select>
           </div>
         </div>
-        <div class="upi-box">
-          <div class="upi-icon">UPI</div>
-          <div style="font-size:0.85rem;color:var(--text-mid);margin-bottom:4px">Pay via UPI to College Account</div>
-          <div class="upi-id-display" id="upiDisplay">UPI ID not yet configured</div>
-          <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:18px">Use this UPI ID in GPay, PhonePe, Paytm, BHIM, or any UPI app</div>
-          <button class="btn btn-gold" onclick="markPayment()">✓ &nbsp;I have completed the UPI payment</button>
-          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:10px">Your payment will be verified and confirmed by the college office within 1–2 working days.</div>
+        <button class="pay-trigger-btn" id="payTriggerBtn" onclick="openUpiModal()">
+          <span style="font-size:1.3rem">💳</span> Proceed to Pay via UPI
+        </button>
+        <div style="font-size:0.78rem;color:var(--text-muted);text-align:center;margin-top:10px">
+          You will be shown UPI app options and a QR code to complete your payment
+        </div>
+      </div>
+    </div>
+
+    <!-- UPI Payment Modal -->
+    <div class="upi-modal-overlay hidden" id="upiModalOverlay" onclick="handleUpiOverlayClick(event)">
+      <div class="upi-modal">
+        <div class="upi-modal-head">
+          <h3>Complete UPI Payment</h3>
+          <button class="modal-close" onclick="closeUpiModal()">✕</button>
+        </div>
+        <div class="gold-bar"></div>
+        <div class="upi-modal-body">
+          <div class="amount-confirm-box">
+            <div>
+              <div class="ac-label">Amount to Pay</div>
+              <div class="ac-val" id="upiModalAmt">₹0</div>
+            </div>
+            <div style="text-align:right">
+              <div class="ac-label">Paying to</div>
+              <div style="font-size:0.88rem;color:var(--text-dark);font-weight:500">Pallavan Polytechnic College</div>
+            </div>
+          </div>
+
+          <div id="upiModalAlert"></div>
+
+          <p style="font-size:0.82rem;font-weight:500;color:var(--text-mid);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em">Pay using your UPI app</p>
+          <div class="upi-app-grid" id="upiAppGrid">
+            <!-- injected by JS -->
+          </div>
+
+          <div class="upi-divider"><span>OR scan QR code (on desktop)</span></div>
+
+          <div class="qr-box">
+            <div id="qrcode"></div>
+            <div style="font-size:0.78rem;color:var(--text-muted);text-align:center">Scan this QR code with any UPI app to pay</div>
+            <div class="upi-id-chip" onclick="copyUpiId()" id="upiIdChip">
+              <span id="upiIdChipText">Loading...</span>
+              <span class="copy-icon">📋 Copy</span>
+            </div>
+          </div>
+
+          <button class="done-confirm-btn" onclick="markPaymentDone()">
+            ✓ &nbsp;I have completed the payment
+          </button>
+          <div style="font-size:0.73rem;color:var(--text-muted);text-align:center;margin-top:8px">
+            After clicking above, your payment will be verified by the college office within 1–2 working days. Receipt will appear in your Payment History once confirmed.
+          </div>
         </div>
       </div>
     </div>
@@ -872,7 +920,7 @@ async function doLogin() {
     if (!stu) { showAlert("loginAlert","danger","Invalid credentials. Check your Application ID and password."); return; }
     currentUser = stu;
     updateHeader();
-    renderStudentDash();
+    await renderStudentDash();
     showPage("pagStudent");
   } catch(e) {
     setLoading(false);
@@ -959,7 +1007,13 @@ async function doRegister() {
 // ═══════════════════════════════════
 //  STUDENT DASHBOARD
 // ═══════════════════════════════════
-function renderStudentDash() {
+async function renderStudentDash() {
+  // Always refresh from Firestore so admin fee changes appear immediately
+  try {
+    const fresh = await DB.getStudent(currentUser.appId);
+    if (fresh) currentUser = fresh;
+  } catch(e) { /* use cached if offline */ }
+
   const s = currentUser;
   document.getElementById("sWelcomeName").textContent = "Welcome, " + s.name;
   document.getElementById("sWelcomeMeta").textContent = s.course + " · " + s.studyYear + " · Admitted: " + s.admYear;
@@ -967,9 +1021,11 @@ function renderStudentDash() {
   document.getElementById("sDashSubtitle").textContent = "Pallavan Polytechnic College · " + s.course;
   document.getElementById("sAcadYear").textContent = "Academic Year " + s.admYear + "–" + (parseInt(s.admYear)+1);
 
-  DB.getSettings().then(settings => {
-    document.getElementById("upiDisplay").textContent = settings.upiId || "UPI ID not yet configured by college";
-  });
+  // Store UPI globally for modal use
+  try {
+    const settings = await DB.getSettings();
+    window._portalUpiId = settings.upiId || "";
+  } catch(e) {}
 
   const f = s.fees || { year1:{due:0,paid:0}, year2:{due:0,paid:0}, year3:{due:0,paid:0} };
   const due1 = Math.max(0,(f.year1.due||0)-(f.year1.paid||0));
@@ -1043,30 +1099,134 @@ function renderStudentDash() {
       </div>`).join("");
 }
 
-async function markPayment() {
+// ═══════════════════════════════════
+//  UPI PAYMENT MODAL
+// ═══════════════════════════════════
+let _qrInstance = null;
+
+async function openUpiModal() {
   clearAlert("sPayAlert");
-  const rawAmt = document.getElementById("sPayAmount").value;
-  const amt = parseFloat(rawAmt);
-  const forLabel = document.getElementById("sPayFor").value;
-  if (isNaN(amt)||amt<=0) { showAlert("sPayAlert","danger","Please enter a valid amount (must be greater than 0)."); return; }
-
+  const amt = parseFloat(document.getElementById("sPayAmount").value);
+  if (isNaN(amt)||amt<=0) {
+    showAlert("sPayAlert","danger","Please enter a valid amount greater than ₹0 first.");
+    return;
+  }
   const settings = await DB.getSettings();
-  if (!settings.upiId) { showAlert("sPayAlert","warning","Payment UPI ID not yet configured. Please contact the college office."); return; }
+  const upiId = settings.upiId || "";
+  if (!upiId) {
+    showAlert("sPayAlert","warning","UPI ID not yet configured by the college. Please contact the college office.");
+    return;
+  }
+  window._portalUpiId = upiId;
 
-  setLoading(true,"Recording payment…");
+  // Update modal amount
+  document.getElementById("upiModalAmt").textContent = "₹" + fmt(amt);
+  document.getElementById("upiIdChipText").textContent = upiId;
+  clearAlert("upiModalAlert");
+
+  // UPI deep link (works on mobile to open apps directly)
+  const upiLink = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=Pallavan+Polytechnic+College&am=${amt}&cu=INR&tn=Fee+Payment`;
+  const payeeName = "Pallavan Polytechnic College";
+
+  // UPI app buttons
+  const apps = [
+    { name:"GPay",     scheme:`tez://upi/pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR`,  icon:"https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Google_Pay_Logo.svg/512px-Google_Pay_Logo.svg.png", fallback: upiLink },
+    { name:"PhonePe",  scheme:`phonepe://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR`,  icon:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/PhonePe_Logo.png/800px-PhonePe_Logo.png", fallback: upiLink },
+    { name:"Paytm",    scheme:`paytmmp://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR`,  icon:"https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Paytm_Logo_%28standalone%29.svg/512px-Paytm_Logo_%28standalone%29.svg.png", fallback: upiLink },
+    { name:"BHIM",     scheme:`bhim://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR`,     icon:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/BHIM_SVG_Logo.svg/512px-BHIM_SVG_Logo.svg.png", fallback: upiLink },
+    { name:"Amazon Pay",scheme:`amazonpay://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR`, icon:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Amazon_logo.svg/512px-Amazon_logo.svg.png", fallback: upiLink },
+    { name:"Cred",     scheme:`credpay://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR`,  icon:"https://play-lh.googleusercontent.com/A7E1eDOhBQBd-jO-uQT4V6UyrCEiU_p5rEKrP-V0hFVopiwA5VRyljHBjf2M0SfXuA", fallback: upiLink },
+    { name:"iMobile",  scheme:upiLink, icon:"https://play-lh.googleusercontent.com/7-bDNhVTOpZ4C0d1KF-KVVS0c-UxCBCnc9YaXL5rIR63HJqJ7D7vvk8-g1jCGHJYk4", fallback: upiLink },
+    { name:"Any UPI",  scheme:upiLink, icon:"", fallback: upiLink, isGeneric:true },
+  ];
+
+  document.getElementById("upiAppGrid").innerHTML = apps.map(app => `
+    <a class="upi-app-btn" onclick="handleUpiAppClick(event,'${encodeURIComponent(app.scheme)}','${encodeURIComponent(app.fallback)}')" href="javascript:void(0)">
+      ${app.isGeneric
+        ? `<div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--royal),var(--royal-light));display:flex;align-items:center;justify-content:center;font-size:18px">💳</div>`
+        : `<img src="${app.icon}" alt="${app.name}" onerror="this.style.display='none'">`
+      }
+      <span>${app.name}</span>
+    </a>`).join("");
+
+  // Generate QR code
+  const qrDiv = document.getElementById("qrcode");
+  qrDiv.innerHTML = "";
+  try {
+    _qrInstance = new QRCode(qrDiv, {
+      text: upiLink,
+      width: 160, height: 160,
+      colorDark: "#3D1A6E", colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  } catch(e) {
+    qrDiv.innerHTML = `<div style="padding:12px;font-size:0.8rem;color:var(--text-muted)">QR unavailable<br>Use UPI ID above</div>`;
+  }
+
+  document.getElementById("upiModalOverlay").classList.remove("hidden");
+}
+
+function handleUpiAppClick(e, encodedScheme, encodedFallback) {
+  e.preventDefault();
+  const scheme  = decodeURIComponent(encodedScheme);
+  const fallback = decodeURIComponent(encodedFallback);
+  // Try app deep link; if not installed browser falls back gracefully
+  const isIOS    = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isAndroid = /Android/i.test(navigator.userAgent);
+
+  if (isIOS || isAndroid) {
+    // On mobile: try deep link, fallback to generic UPI link after 1.5s
+    window.location.href = scheme;
+    setTimeout(() => { try { window.location.href = fallback; } catch(e){} }, 1500);
+  } else {
+    // On desktop: show instruction
+    showAlert("upiModalAlert","info","💡 Open this UPI app on your phone, or scan the QR code below to pay from your phone.");
+  }
+}
+
+function copyUpiId() {
+  const id = window._portalUpiId || "";
+  if (!id) return;
+  navigator.clipboard.writeText(id).then(() => {
+    const chip = document.getElementById("upiIdChipText");
+    const orig = chip.textContent;
+    chip.textContent = "Copied!";
+    setTimeout(() => chip.textContent = orig, 1500);
+  }).catch(() => {
+    prompt("Copy this UPI ID:", id);
+  });
+}
+
+function closeUpiModal() {
+  document.getElementById("upiModalOverlay").classList.add("hidden");
+  if (_qrInstance) { try { _qrInstance.clear(); } catch(e){} _qrInstance=null; }
+}
+
+function handleUpiOverlayClick(e) {
+  if (e.target === document.getElementById("upiModalOverlay")) closeUpiModal();
+}
+
+async function markPaymentDone() {
+  const amt      = parseFloat(document.getElementById("sPayAmount").value);
+  const forLabel = document.getElementById("sPayFor").value;
+  clearAlert("upiModalAlert");
+  if (isNaN(amt)||amt<=0) { showAlert("upiModalAlert","danger","Invalid amount."); return; }
+
+  setLoading(true,"Recording your payment…");
   try {
     const stu = await DB.getStudent(currentUser.appId);
     stu.payments = stu.payments || [];
-    stu.payments.push({ amount: amt, forLabel, date: new Date().toISOString(), status:"Pending Verification" });
+    stu.payments.push({ amount:amt, forLabel, date:new Date().toISOString(), status:"Pending Verification" });
     await DB.setStudent(stu);
     currentUser = stu;
     setLoading(false);
-    showAlert("sPayAlert","success",`Payment of ₹${fmt(amt)} submitted for verification. The college will confirm within 1–2 working days.`);
+    closeUpiModal();
     document.getElementById("sPayAmount").value = "";
-    renderStudentDash();
+    showAlert("sPayAlert","success",`✅ Payment of ₹${fmt(amt)} recorded! It will appear as Confirmed in your Payment History once verified by the college office.`);
+    await renderStudentDash();
   } catch(e) {
     setLoading(false);
-    showAlert("sPayAlert","danger","Error recording payment. Please try again.");
+    showAlert("upiModalAlert","danger","Error recording payment. Please try again.");
   }
 }
 
