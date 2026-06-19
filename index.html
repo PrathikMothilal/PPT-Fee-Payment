@@ -15,6 +15,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <!-- QRCode.js for UPI QR -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- EmailJS -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -762,20 +764,20 @@ let useFirebase = false;
 async function initDB() {
   setLoading(true, "Connecting to database…");
   try {
-    // Prevent duplicate app init on hot reload
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
     }
     db = firebase.firestore();
-    // Enable offline persistence so it works even with brief network drops
+    // Offline persistence — non-fatal if fails (e.g. multiple tabs, incognito)
     try {
       await db.enablePersistence({ synchronizeTabs: true });
     } catch(pe) {
-      // persistence errors are non-fatal (e.g. multiple tabs)
       console.warn("Persistence:", pe.code);
     }
-    // Verify real connectivity
-    await db.collection("config").doc("settings").get();
+    // Confirm live server connectivity (bypass cache)
+    await db.collection("config").doc("settings").get({ source: "server" }).catch(() =>
+      db.collection("config").doc("settings").get()
+    );
     useFirebase = true;
     console.log("✅ Firestore connected — project: ppt86-95c61");
   } catch(e) {
@@ -786,9 +788,16 @@ async function initDB() {
 }
 
 // ─── Firestore helpers ───
-async function fsGetDoc(col, docId) {
-  const snap = await db.collection(col).doc(docId).get();
-  return snap.exists ? { id: snap.id, ...snap.data() } : null;
+async function fsGetDoc(col, docId, forceServer=false) {
+  try {
+    const opts = forceServer ? { source: "server" } : {};
+    const snap = await db.collection(col).doc(docId).get(opts);
+    return snap.exists ? { id: snap.id, ...snap.data() } : null;
+  } catch(e) {
+    // Fall back to cache if server unreachable
+    const snap = await db.collection(col).doc(docId).get();
+    return snap.exists ? { id: snap.id, ...snap.data() } : null;
+  }
 }
 async function fsSetDoc(col, docId, data) {
   await db.collection(col).doc(docId).set(data, { merge: true });
@@ -815,9 +824,9 @@ const DB = {
     }
     return LS.get("ppt_students") || [];
   },
-  async getStudent(appId) {
+  async getStudent(appId, forceServer=true) {
     if (useFirebase) {
-      return await fsGetDoc("students", appId.toLowerCase());
+      return await fsGetDoc("students", appId.toLowerCase(), forceServer);
     }
     return (LS.get("ppt_students")||[]).find(s=>s.appId===appId) || null;
   },
@@ -903,6 +912,7 @@ async function doLogin() {
 
   if (id===ADMIN_EMAIL && pwd===ADMIN_PWD) {
     currentUser = "admin";
+    saveSession(currentUser);
     updateHeader();
     await renderAdminDash();
     showPage("pagAdmin");
@@ -919,6 +929,7 @@ async function doLogin() {
     setLoading(false);
     if (!stu) { showAlert("loginAlert","danger","Invalid credentials. Check your Application ID and password."); return; }
     currentUser = stu;
+    saveSession(currentUser);
     updateHeader();
     await renderStudentDash();
     showPage("pagStudent");
@@ -930,6 +941,7 @@ async function doLogin() {
 
 function doLogout() {
   currentUser = null;
+  saveSession(null);
   updateHeader();
   document.getElementById("loginId").value="";
   document.getElementById("loginPwd").value="";
@@ -1008,10 +1020,13 @@ async function doRegister() {
 //  STUDENT DASHBOARD
 // ═══════════════════════════════════
 async function renderStudentDash() {
-  // Always refresh from Firestore so admin fee changes appear immediately
+  // Always fetch live data from Firestore server so admin fee updates show instantly
   try {
-    const fresh = await DB.getStudent(currentUser.appId);
-    if (fresh) currentUser = fresh;
+    const fresh = await DB.getStudent(currentUser.appId, true); // forceServer=true
+    if (fresh) {
+      currentUser = fresh;
+      saveSession(currentUser, true); // touch session to keep it alive
+    }
   } catch(e) { /* use cached if offline */ }
 
   const s = currentUser;
@@ -1242,19 +1257,23 @@ async function renderAdminDash() {
     document.getElementById("adminTotalStudents").textContent = students.length;
 
     // Populate settings display
-    document.getElementById("viewUpiId").innerHTML  = settings.upiId  ? escHtml(settings.upiId)  : '<em class="text-muted">Not set</em>';
-    document.getElementById("viewAccNo").innerHTML  = settings.accNo  ? escHtml(settings.accNo)  : '<em class="text-muted">Not set</em>';
-    document.getElementById("viewSmsKey").innerHTML = settings.smsKey ? '••••••••••••' : '<em class="text-muted">Not set</em>';
-    document.getElementById("viewFee1").textContent = "₹" + fmt(settings.defFee1||0);
-    document.getElementById("viewFee2").textContent = "₹" + fmt(settings.defFee2||0);
-    document.getElementById("viewFee3").textContent = "₹" + fmt(settings.defFee3||0);
+    document.getElementById("viewUpiId").innerHTML    = settings.upiId    ? escHtml(settings.upiId)    : '<em class="text-muted">Not set</em>';
+    document.getElementById("viewAccNo").innerHTML    = settings.accNo    ? escHtml(settings.accNo)    : '<em class="text-muted">Not set</em>';
+    document.getElementById("viewEmailSvc").innerHTML = settings.emailSvc ? escHtml(settings.emailSvc) : '<em class="text-muted">Not set</em>';
+    document.getElementById("viewEmailTpl").innerHTML = settings.emailTpl ? escHtml(settings.emailTpl) : '<em class="text-muted">Not set</em>';
+    document.getElementById("viewEmailKey").innerHTML = settings.emailKey ? '••••••••••••'              : '<em class="text-muted">Not set</em>';
+    document.getElementById("viewFee1").textContent   = "₹" + fmt(settings.defFee1||0);
+    document.getElementById("viewFee2").textContent   = "₹" + fmt(settings.defFee2||0);
+    document.getElementById("viewFee3").textContent   = "₹" + fmt(settings.defFee3||0);
     // Populate edit fields too
-    if (document.getElementById("adminUpiId"))  document.getElementById("adminUpiId").value  = settings.upiId||"";
-    if (document.getElementById("adminAccNo"))   document.getElementById("adminAccNo").value   = settings.accNo||"";
-    if (document.getElementById("adminSmsKey"))  document.getElementById("adminSmsKey").value  = settings.smsKey||"";
-    if (document.getElementById("defFee1"))      document.getElementById("defFee1").value      = settings.defFee1||"";
-    if (document.getElementById("defFee2"))      document.getElementById("defFee2").value      = settings.defFee2||"";
-    if (document.getElementById("defFee3"))      document.getElementById("defFee3").value      = settings.defFee3||"";
+    if (document.getElementById("adminUpiId"))    document.getElementById("adminUpiId").value    = settings.upiId||"";
+    if (document.getElementById("adminAccNo"))    document.getElementById("adminAccNo").value    = settings.accNo||"";
+    if (document.getElementById("adminEmailSvc")) document.getElementById("adminEmailSvc").value = settings.emailSvc||"";
+    if (document.getElementById("adminEmailTpl")) document.getElementById("adminEmailTpl").value = settings.emailTpl||"";
+    if (document.getElementById("adminEmailKey")) document.getElementById("adminEmailKey").value = settings.emailKey||"";
+    if (document.getElementById("defFee1"))       document.getElementById("defFee1").value       = settings.defFee1||"";
+    if (document.getElementById("defFee2"))       document.getElementById("defFee2").value       = settings.defFee2||"";
+    if (document.getElementById("defFee3"))       document.getElementById("defFee3").value       = settings.defFee3||"";
 
     // Pending approvals
     const pending = [];
@@ -1355,15 +1374,20 @@ function cancelEditSection(section) {
 
 async function savePaymentSettings() {
   const s = await DB.getSettings();
-  s.upiId  = document.getElementById("adminUpiId").value.trim();
-  s.accNo  = document.getElementById("adminAccNo").value.trim();
-  s.smsKey = document.getElementById("adminSmsKey").value.trim();
+  s.upiId    = document.getElementById("adminUpiId").value.trim();
+  s.accNo    = document.getElementById("adminAccNo").value.trim();
+  s.smsKey   = document.getElementById("adminSmsKey")?.value?.trim() || s.smsKey || "";
+  s.emailSvc = document.getElementById("adminEmailSvc").value.trim();
+  s.emailTpl = document.getElementById("adminEmailTpl").value.trim();
+  s.emailKey = document.getElementById("adminEmailKey").value.trim();
   setLoading(true,"Saving…");
   await DB.setSettings(s);
   setLoading(false);
-  document.getElementById("viewUpiId").innerHTML  = s.upiId  ? escHtml(s.upiId)  : '<em class="text-muted">Not set</em>';
-  document.getElementById("viewAccNo").innerHTML  = s.accNo  ? escHtml(s.accNo)  : '<em class="text-muted">Not set</em>';
-  document.getElementById("viewSmsKey").innerHTML = s.smsKey ? '••••••••••••' : '<em class="text-muted">Not set</em>';
+  document.getElementById("viewUpiId").innerHTML    = s.upiId    ? escHtml(s.upiId)    : '<em class="text-muted">Not set</em>';
+  document.getElementById("viewAccNo").innerHTML    = s.accNo    ? escHtml(s.accNo)    : '<em class="text-muted">Not set</em>';
+  document.getElementById("viewEmailSvc").innerHTML = s.emailSvc ? escHtml(s.emailSvc) : '<em class="text-muted">Not set</em>';
+  document.getElementById("viewEmailTpl").innerHTML = s.emailTpl ? escHtml(s.emailTpl) : '<em class="text-muted">Not set</em>';
+  document.getElementById("viewEmailKey").innerHTML = s.emailKey ? '••••••••••••'      : '<em class="text-muted">Not set</em>';
   const msg=document.getElementById("settingsSavedMsg");
   msg.style.display="block"; setTimeout(()=>{msg.style.display="none"; cancelEditSection("paySettings");},1500);
 }
@@ -1374,8 +1398,24 @@ async function saveDefaultFees() {
   const fee3 = Math.max(0,parseFloat(document.getElementById("defFee3").value)||0);
   const s = await DB.getSettings();
   s.defFee1=fee1; s.defFee2=fee2; s.defFee3=fee3;
-  setLoading(true,"Saving…");
+  setLoading(true,"Saving fee structure & updating all students…");
   await DB.setSettings(s);
+
+  // Propagate new fees to ALL existing students
+  // Only updates the "due" amount; never touches what they have already paid
+  try {
+    const students = await DB.getStudents();
+    const updates = students.map(async stu => {
+      let changed = false;
+      if (!stu.fees) stu.fees = { year1:{due:0,paid:0}, year2:{due:0,paid:0}, year3:{due:0,paid:0} };
+      if ((stu.fees.year1.due||0) !== fee1) { stu.fees.year1.due = fee1; changed = true; }
+      if ((stu.fees.year2.due||0) !== fee2) { stu.fees.year2.due = fee2; changed = true; }
+      if ((stu.fees.year3.due||0) !== fee3) { stu.fees.year3.due = fee3; changed = true; }
+      if (changed) await DB.setStudent(stu);
+    });
+    await Promise.all(updates);
+  } catch(e) { console.warn("Fee propagation partial error:", e); }
+
   setLoading(false);
   document.getElementById("viewFee1").textContent="₹"+fmt(fee1);
   document.getElementById("viewFee2").textContent="₹"+fmt(fee2);
@@ -1409,10 +1449,13 @@ async function confirmPayment(appId, payIdx) {
     }
     await DB.setStudent(stu);
 
-    // Send SMS notification
+    // Send SMS + Email notifications
     const settings = await DB.getSettings();
     if (settings.smsKey && stu.mobile) {
       await sendSMS(settings.smsKey, stu, p);
+    }
+    if (settings.emailSvc && settings.emailTpl && settings.emailKey && stu.email) {
+      await sendEmailReceipt(settings, stu, p);
     }
 
     setLoading(false);
@@ -1430,6 +1473,40 @@ async function rejectPayment(appId, payIdx) {
     setLoading(false);
     await renderAdminDash();
   } catch(e) { setLoading(false); }
+}
+
+// ═══════════════════════════════════
+//  EMAIL — EmailJS
+// ═══════════════════════════════════
+async function sendEmailReceipt(settings, stu, payment) {
+  try {
+    emailjs.init(settings.emailKey);
+    const totalPaid = ["year1","year2","year3"].reduce((a,y)=>a+(stu.fees?.[y]?.paid||0),0);
+    const totalDue  = ["year1","year2","year3"].reduce((a,y)=>a+(stu.fees?.[y]?.due||0),0);
+    const outstanding = Math.max(0, totalDue - totalPaid);
+
+    const templateParams = {
+      to_name:        stu.name,
+      to_email:       stu.email,
+      student_name:   stu.name,
+      app_id:         stu.appId,
+      course:         stu.course,
+      year:           stu.studyYear,
+      amount:         "₹" + fmt(payment.amount),
+      payment_for:    payment.forLabel,
+      receipt_no:     payment.receiptNo || "—",
+      payment_date:   formatDate(payment.confirmedAt || payment.date),
+      outstanding:    "₹" + fmt(outstanding),
+      college_name:   "Pallavan Polytechnic College",
+      college_place:  "Kolivakkam, Kanchipuram",
+    };
+
+    await emailjs.send(settings.emailSvc, settings.emailTpl, templateParams);
+    console.log("✅ Email receipt sent to", stu.email);
+  } catch(e) {
+    console.warn("Email send failed:", e);
+    // Non-fatal — don't block the confirmation flow
+  }
 }
 
 // ═══════════════════════════════════
@@ -1818,9 +1895,75 @@ document.addEventListener("keydown",e=>{
   if(e.key==="Enter"&&document.getElementById("pagLogin").classList.contains("active")) doLogin();
 });
 
+// ════════════════════════════════════════════════════════
+//  SESSION PERSISTENCE
+//  Saves login state to localStorage so refreshing doesn't log out
+// ════════════════════════════════════════════════════════
+function saveSession(user, touch=false) {
+  if (!user) {
+    localStorage.removeItem("ppt_session");
+    return;
+  }
+  // If touch=true, only update savedAt timestamp (keep existing session alive)
+  if (touch) {
+    const raw = localStorage.getItem("ppt_session");
+    if (raw) {
+      try {
+        const s = JSON.parse(raw);
+        s.savedAt = Date.now();
+        localStorage.setItem("ppt_session", JSON.stringify(s));
+        return;
+      } catch(e) {}
+    }
+  }
+  const session = {
+    type: user === "admin" ? "admin" : "student",
+    appId: user === "admin" ? null : user.appId,
+    savedAt: Date.now()
+  };
+  localStorage.setItem("ppt_session", JSON.stringify(session));
+}
+
+async function restoreSession() {
+  try {
+    const raw = localStorage.getItem("ppt_session");
+    if (!raw) return false;
+    const session = JSON.parse(raw);
+    // Sessions expire after 7 days
+    const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+    if (Date.now() - session.savedAt > SEVEN_DAYS) {
+      localStorage.removeItem("ppt_session");
+      return false;
+    }
+    if (session.type === "admin") {
+      currentUser = "admin";
+      updateHeader();
+      await renderAdminDash();
+      showPage("pagAdmin");
+      return true;
+    } else if (session.type === "student" && session.appId) {
+      setLoading(true, "Restoring your session…");
+      const stu = await DB.getStudent(session.appId);
+      setLoading(false);
+      if (stu) {
+        currentUser = stu;
+        updateHeader();
+        await renderStudentDash();
+        showPage("pagStudent");
+        return true;
+      }
+    }
+  } catch(e) {
+    localStorage.removeItem("ppt_session");
+  }
+  return false;
+}
+
 // ─── INIT ───
 window.addEventListener("DOMContentLoaded", async()=>{
   await initDB();
+  // Try to restore previous session after DB is ready
+  await restoreSession();
 });
 </script>
 </body>
