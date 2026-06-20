@@ -435,6 +435,19 @@ textarea.form-control{resize:vertical;min-height:80px}
             <label>Aadhar Number <span class="required">*</span></label>
             <input type="text" id="rAadhar" class="form-control" placeholder="12-digit Aadhar" maxlength="12">
           </div>
+          <div class="form-group">
+            <label>Previous School Type <span class="required">*</span></label>
+            <select id="rSchoolType" class="form-control" onchange="toggleGovtSchoolNote()">
+              <option value="">Select school type</option>
+              <option value="Government">Government School</option>
+              <option value="Private">Private School</option>
+            </select>
+          </div>
+          <div class="form-group" id="govtSchoolNoteBox" style="display:none">
+            <div style="background:linear-gradient(135deg,#FFF8E6,#FFF3D6);border:1px solid rgba(122,85,0,0.2);border-radius:10px;padding:12px 14px;font-size:0.82rem;color:var(--warning)">
+              <strong>📌 Note:</strong> As a Government School student, you are required to pay a monthly government stipend contribution set by the college. This will be reflected in your fee dashboard.
+            </div>
+          </div>
         </div>
         <div class="form-group">
           <label>Residential Address <span class="required">*</span></label>
@@ -528,6 +541,16 @@ textarea.form-control{resize:vertical;min-height:80px}
       </div>
     </div>
 
+    <!-- Govt School Stipend Section (shown only if govt school student) -->
+    <div class="section-card" id="sGovtStipendCard" style="display:none">
+      <div class="card-head">
+        <h3>🏫 Government School Stipend</h3>
+        <span class="badge badge-gold">Monthly Compulsory</span>
+      </div>
+      <div class="card-body" id="sGovtStipendBody">
+      </div>
+    </div>
+
     <div class="section-card">
       <div class="card-head"><h3>Make a Payment</h3></div>
       <div class="card-body">
@@ -557,6 +580,7 @@ textarea.form-control{resize:vertical;min-height:80px}
             <select id="sPayFor" class="form-control" onchange="updateAmountHint();clearPayAmt()">
               <option value="current">Current Year Fees</option>
               <option value="arrear">Arrear / Previous Dues</option>
+              <option value="govt">Govt. School Stipend</option>
               <option value="exam">Examination Fees</option>
               <option value="misc">Miscellaneous</option>
             </select>
@@ -800,9 +824,24 @@ textarea.form-control{resize:vertical;min-height:80px}
               <span class="setting-label">3rd Year Fee</span>
               <span class="setting-val" id="viewFee3">₹0</span>
             </div>
+            <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:12px 0"></div>
+            <div style="font-size:0.72rem;font-weight:600;color:var(--royal);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px">🏫 Govt. School Monthly Stipend</div>
+            <div class="setting-row">
+              <span class="setting-label">1st Year / Month</span>
+              <span class="setting-val" id="viewGovt1">₹0</span>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">2nd Year / Month</span>
+              <span class="setting-val" id="viewGovt2">₹0</span>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">3rd Year / Month</span>
+              <span class="setting-val" id="viewGovt3">₹0</span>
+            </div>
           </div>
           <!-- Edit form -->
           <div id="feeStructEdit" style="display:none">
+            <p style="font-size:0.78rem;font-weight:600;color:var(--royal);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px">Annual Fees</p>
             <div class="form-group">
               <label>1st Year Fee (₹)</label>
               <input type="number" id="defFee1" class="form-control" placeholder="0" min="0" step="1" oninput="enforceNonNeg(this)">
@@ -814,6 +853,21 @@ textarea.form-control{resize:vertical;min-height:80px}
             <div class="form-group">
               <label>3rd Year Fee (₹)</label>
               <input type="number" id="defFee3" class="form-control" placeholder="0" min="0" step="1" oninput="enforceNonNeg(this)">
+            </div>
+            <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:14px 0 10px"></div>
+            <p style="font-size:0.78rem;font-weight:600;color:var(--royal);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">🏫 Govt. School Monthly Stipend</p>
+            <p style="font-size:0.75rem;color:var(--text-muted);margin-bottom:10px">Amount government school students must pay each month (received from government)</p>
+            <div class="form-group">
+              <label>1st Year — Per Month (₹)</label>
+              <input type="number" id="defGovt1" class="form-control" placeholder="0" min="0" step="1" oninput="enforceNonNeg(this)">
+            </div>
+            <div class="form-group">
+              <label>2nd Year — Per Month (₹)</label>
+              <input type="number" id="defGovt2" class="form-control" placeholder="0" min="0" step="1" oninput="enforceNonNeg(this)">
+            </div>
+            <div class="form-group">
+              <label>3rd Year — Per Month (₹)</label>
+              <input type="number" id="defGovt3" class="form-control" placeholder="0" min="0" step="1" oninput="enforceNonNeg(this)">
             </div>
             <div class="d-flex gap-8">
               <button class="btn btn-primary btn-sm" onclick="saveDefaultFees()">Save Changes</button>
@@ -1007,6 +1061,12 @@ function enforceNonNeg(el) {
   if (!isNaN(v) && v < 0) el.value = 0;
 }
 
+function toggleGovtSchoolNote() {
+  const val = document.getElementById("rSchoolType")?.value;
+  const box = document.getElementById("govtSchoolNoteBox");
+  if (box) box.style.display = val === "Government" ? "block" : "none";
+}
+
 // ═══════════════════════════════════
 //  LOGIN
 // ═══════════════════════════════════
@@ -1077,9 +1137,10 @@ async function doRegister() {
     motherName:   v("rMotherName"),
     motherMobile: v("rMotherMobile"),
     password:     v("rPwd"),
+    schoolType:   v("rSchoolType"),
   };
   const pwd2 = v("rPwd2");
-  const req = ["appId","admYear","studyYear","course","name","dob","gender","community","aadhar","address","mobile","fatherName","fatherMobile","motherName","motherMobile","password"];
+  const req = ["appId","admYear","studyYear","course","name","dob","gender","community","aadhar","address","mobile","fatherName","fatherMobile","motherName","motherMobile","password","schoolType"];
   for (const k of req) {
     if (!f[k]) { showAlert("registerAlert","danger","Please fill in all required fields."); return; }
   }
@@ -1110,6 +1171,16 @@ async function doRegister() {
       year2: { due: Math.max(0, settings.defFee2||0), paid: 0 },
       year3: { due: Math.max(0, settings.defFee3||0), paid: 0 },
     };
+    // Govt school students have a monthly stipend contribution
+    if (f.schoolType === "Government") {
+      const yn = {"1st Year":1,"2nd Year":2,"3rd Year":3}[f.studyYear] || 1;
+      const monthlyKey = `govtStipend_year${yn}`;
+      f.govtStipend = {
+        monthlyDue: Math.max(0, settings[monthlyKey]||0),
+        totalPaid: 0,
+        months: []  // records each month paid
+      };
+    }
     f.payments = [];
     f.registeredAt = new Date().toISOString();
     await DB.setStudent(f);
@@ -1258,6 +1329,48 @@ async function renderStudentDash() {
 
   // Show max-due hint on dashboard load
   setTimeout(() => updateAmountHint(), 80);
+
+  // ── Govt School Stipend Section ──
+  const govtCard = document.getElementById("sGovtStipendCard");
+  const govtBody = document.getElementById("sGovtStipendBody");
+  if (s.schoolType === "Government" && s.govtStipend) {
+    govtCard.style.display = "block";
+    const gs = s.govtStipend;
+    const monthly = gs.monthlyDue || 0;
+    const totalPaidGs = gs.totalPaid || 0;
+    const months = gs.months || [];
+    const currentMonthKey = new Date().toISOString().slice(0,7); // YYYY-MM
+    const paidThisMonth = months.includes(currentMonthKey);
+
+    govtBody.innerHTML = `
+      <div class="fee-grid" style="margin-bottom:20px">
+        <div class="fee-card due">
+          <div class="card-label">Monthly Amount</div>
+          <div class="card-amount"><span>₹</span>${fmt(monthly)}</div>
+          <div class="card-note">Per month — compulsory</div>
+        </div>
+        <div class="fee-card paid">
+          <div class="card-label">Total Paid (Stipend)</div>
+          <div class="card-amount"><span>₹</span>${fmt(totalPaidGs)}</div>
+          <div class="card-note">All months combined</div>
+        </div>
+        <div class="fee-card ${paidThisMonth?'paid':'overdue'}">
+          <div class="card-label">This Month</div>
+          <div class="card-amount" style="font-size:1.2rem">${paidThisMonth?'✅ Paid':'⚠️ Pending'}</div>
+          <div class="card-note">${currentMonthKey}</div>
+        </div>
+      </div>
+      ${months.length > 0 ? `
+        <div style="font-size:0.8rem;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px">Months Paid</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${months.map(m=>`<span class="badge badge-green">${m}</span>`).join("")}
+        </div>` : '<p class="text-muted">No stipend payments recorded yet.</p>'}
+      <div style="margin-top:16px;padding:12px 14px;background:var(--warning-bg);border:1px solid rgba(122,85,0,0.2);border-radius:10px;font-size:0.82rem;color:var(--warning)">
+        <strong>ℹ️ Note:</strong> Your monthly stipend of <strong>₹${fmt(monthly)}</strong> is the government scholarship amount received by you each month, which must be paid to the college. Please make this payment via UPI selecting <em>"Govt. School Stipend"</em> in the payment section.
+      </div>`;
+  } else {
+    govtCard.style.display = "none";
+  }
 }
 
 // ═══════════════════════════════════
@@ -1282,6 +1395,8 @@ function getMaxDue() {
     if (yn >= 2) a += Math.max(0,(f.year1.due||0)-(f.year1.paid||0));
     if (yn >= 3) a += Math.max(0,(f.year2.due||0)-(f.year2.paid||0));
     return a;
+  } else if (forVal === "govt") {
+    return s.govtStipend?.monthlyDue || 0;
   }
   return null; // exam/misc — no cap
 }
@@ -1343,6 +1458,13 @@ function updateAmountHint() {
       ? `<span>📌</span><span>Total arrear dues: <strong style="font-size:1rem">₹${fmt(arrear)}</strong></span>`
       : `<span>✅</span><span>No arrear dues pending!</span>`;
     hintType = arrear > 0 ? "warning" : "success";
+  } else if (forVal === "govt") {
+    const monthly = s.govtStipend?.monthlyDue || 0;
+    maxAmt  = monthly;
+    hintMsg = monthly > 0
+      ? `<span>🏫</span><span>Monthly govt. stipend due: <strong style="font-size:1rem">₹${fmt(monthly)}</strong>/month</span>`
+      : `<span>⚠️</span><span>Monthly stipend not set by admin yet.</span>`;
+    hintType = monthly > 0 ? "warning" : "info";
   } else if (forVal === "exam") {
     hintMsg = `<span>ℹ️</span><span>Enter the examination fee amount as communicated by the college.</span>`;
     hintType = "info";
@@ -1436,7 +1558,7 @@ async function validatePayAmount(amt, forVal) {
       return false;
     }
     if (amt > due) {
-      showAlert("sPayAlert","danger",`Amount cannot exceed your current year due of <strong>₹${fmt(due)}</strong>. Please enter ₹${fmt(due)} or less.`);
+      showAlert("sPayAlert","danger",`Amount cannot exceed your current year due of <strong>₹${fmt(due)}</strong>.`);
       return false;
     }
   } else if (forVal === "arrear") {
@@ -1449,6 +1571,20 @@ async function validatePayAmount(amt, forVal) {
     }
     if (amt > arrear) {
       showAlert("sPayAlert","danger",`Amount cannot exceed your total arrear dues of <strong>₹${fmt(arrear)}</strong>.`);
+      return false;
+    }
+  } else if (forVal === "govt") {
+    if (s.schoolType !== "Government") {
+      showAlert("sPayAlert","danger","Govt. School Stipend is only applicable for Government School students.");
+      return false;
+    }
+    const monthly = s.govtStipend?.monthlyDue || 0;
+    if (monthly === 0) {
+      showAlert("sPayAlert","warning","Monthly stipend amount not set by admin yet.");
+      return false;
+    }
+    if (amt > monthly) {
+      showAlert("sPayAlert","danger",`Stipend amount cannot exceed the monthly amount of <strong>₹${fmt(monthly)}</strong>.`);
       return false;
     }
   }
@@ -1753,16 +1889,20 @@ async function savePaymentSettings() {
 }
 
 async function saveDefaultFees() {
-  const fee1 = Math.max(0,parseFloat(document.getElementById("defFee1").value)||0);
-  const fee2 = Math.max(0,parseFloat(document.getElementById("defFee2").value)||0);
-  const fee3 = Math.max(0,parseFloat(document.getElementById("defFee3").value)||0);
+  const fee1  = Math.max(0,parseFloat(document.getElementById("defFee1").value)||0);
+  const fee2  = Math.max(0,parseFloat(document.getElementById("defFee2").value)||0);
+  const fee3  = Math.max(0,parseFloat(document.getElementById("defFee3").value)||0);
+  const govt1 = Math.max(0,parseFloat(document.getElementById("defGovt1").value)||0);
+  const govt2 = Math.max(0,parseFloat(document.getElementById("defGovt2").value)||0);
+  const govt3 = Math.max(0,parseFloat(document.getElementById("defGovt3").value)||0);
   const s = await DB.getSettings();
   s.defFee1=fee1; s.defFee2=fee2; s.defFee3=fee3;
+  s.govtStipend_year1=govt1; s.govtStipend_year2=govt2; s.govtStipend_year3=govt3;
   setLoading(true,"Saving fee structure & updating all students…");
   await DB.setSettings(s);
 
-  // Propagate new fees to ALL existing students
-  // Only updates the "due" amount; never touches what they have already paid
+  // Propagate annual fees to ALL students
+  // Propagate govt stipend monthly amount to govt school students only
   try {
     const students = await DB.getStudents();
     const updates = students.map(async stu => {
@@ -1771,15 +1911,28 @@ async function saveDefaultFees() {
       if ((stu.fees.year1.due||0) !== fee1) { stu.fees.year1.due = fee1; changed = true; }
       if ((stu.fees.year2.due||0) !== fee2) { stu.fees.year2.due = fee2; changed = true; }
       if ((stu.fees.year3.due||0) !== fee3) { stu.fees.year3.due = fee3; changed = true; }
+      // Update govt stipend monthly amount for govt school students
+      if (stu.schoolType === "Government") {
+        const yn = {"1st Year":1,"2nd Year":2,"3rd Year":3}[stu.studyYear]||1;
+        const newMonthly = [govt1,govt2,govt3][yn-1];
+        if (!stu.govtStipend) stu.govtStipend = { monthlyDue:0, totalPaid:0, months:[] };
+        if (stu.govtStipend.monthlyDue !== newMonthly) {
+          stu.govtStipend.monthlyDue = newMonthly;
+          changed = true;
+        }
+      }
       if (changed) await DB.setStudent(stu);
     });
     await Promise.all(updates);
-  } catch(e) { console.warn("Fee propagation partial error:", e); }
+  } catch(e) { console.warn("Fee propagation error:", e); }
 
   setLoading(false);
   document.getElementById("viewFee1").textContent="₹"+fmt(fee1);
   document.getElementById("viewFee2").textContent="₹"+fmt(fee2);
   document.getElementById("viewFee3").textContent="₹"+fmt(fee3);
+  document.getElementById("viewGovt1").textContent="₹"+fmt(govt1)+"/month";
+  document.getElementById("viewGovt2").textContent="₹"+fmt(govt2)+"/month";
+  document.getElementById("viewGovt3").textContent="₹"+fmt(govt3)+"/month";
   const msg=document.getElementById("feeSavedMsg");
   msg.style.display="block"; setTimeout(()=>{msg.style.display="none"; cancelEditSection("feeStruct");},1500);
 }
@@ -1802,6 +1955,12 @@ async function confirmPayment(appId, payIdx) {
         const d=(stu.fees[y].due||0)-(stu.fees[y].paid||0);
         if (d>0){stu.fees[y].paid=(stu.fees[y].paid||0)+Math.min(p.amount,d);break;}
       }
+    } else if (forLabel.includes("govt")||forLabel.includes("stipend")) {
+      // Record govt stipend payment — track the month
+      if (!stu.govtStipend) stu.govtStipend = { monthlyDue:0, totalPaid:0, months:[] };
+      stu.govtStipend.totalPaid = (stu.govtStipend.totalPaid||0) + p.amount;
+      const monthKey = p.confirmedAt ? p.confirmedAt.slice(0,7) : new Date().toISOString().slice(0,7);
+      if (!stu.govtStipend.months.includes(monthKey)) stu.govtStipend.months.push(monthKey);
     } else {
       const yMap={"1st Year":"year1","2nd Year":"year2","3rd Year":"year3"};
       const k=yMap[stu.studyYear]||"year1";
@@ -2145,6 +2304,12 @@ async function openStudentModal(appId) {
       <div class="form-group"><label>Mother's Name</label><input class="form-control" id="mMother" value="${escAttr(s.motherName||'')}"></div>
       <div class="form-group"><label>Admission Year</label><input class="form-control" id="mAdmYear" value="${escAttr(s.admYear||'')}"></div>
       <div class="form-group"><label>Community</label><input class="form-control" id="mCommunity" value="${escAttr(s.community||'')}"></div>
+      <div class="form-group"><label>School Type</label>
+        <select class="form-control" id="mSchoolType">
+          <option value="Government" ${s.schoolType==="Government"?"selected":""}>Government School</option>
+          <option value="Private"    ${s.schoolType==="Private"?"selected":""}>Private School</option>
+        </select>
+      </div>
     </div>
     <div class="form-group"><label>Address</label><textarea class="form-control" id="mAddress" rows="2">${escHtml(s.address||'')} </textarea></div>
     <div class="section-divider" style="margin-top:20px">Fee Structure</div>
@@ -2190,6 +2355,7 @@ async function saveStudentEdit(appId) {
     stu.motherName  = document.getElementById("mMother").value;
     stu.admYear     = document.getElementById("mAdmYear").value;
     stu.community   = document.getElementById("mCommunity").value;
+    stu.schoolType  = document.getElementById("mSchoolType").value;
     stu.address     = document.getElementById("mAddress").value;
     stu.fees = {
       year1:{due:Math.max(0,parseFloat(document.getElementById("mFee1Due").value)||0),paid:Math.max(0,parseFloat(document.getElementById("mFee1Paid").value)||0)},
