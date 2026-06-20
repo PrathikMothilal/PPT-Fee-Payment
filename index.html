@@ -15,6 +15,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <!-- QRCode.js for UPI QR -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- EmailJS for sending receipts -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <!-- EmailJS -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
@@ -295,6 +297,10 @@ textarea.form-control{resize:vertical;min-height:80px}
 .pay-amount-chip{background:rgba(255,255,255,0.15);border:1px solid rgba(201,168,76,0.4);border-radius:20px;padding:3px 12px;font-size:0.8rem;color:var(--gold-light)}
 .pay-trigger-btn{width:100%;padding:14px 20px;background:linear-gradient(135deg,var(--royal),var(--royal-light));color:#fff;border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:600;cursor:pointer;transition:all 0.2s;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 16px rgba(61,26,110,0.25);letter-spacing:0.02em}
 .pay-trigger-btn:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(61,26,110,0.35)}
+
+/* Net banking tab */
+.tab-active-upi{background:var(--royal)!important;color:#fff!important}
+.tab-inactive{background:#fafafa!important;color:var(--text-mid)!important}
 </style>
 </head>
 <body>
@@ -526,26 +532,76 @@ textarea.form-control{resize:vertical;min-height:80px}
       <div class="card-head"><h3>Make a Payment</h3></div>
       <div class="card-body">
         <div id="sPayAlert"></div>
-        <div class="form-grid-2" style="margin-bottom:20px">
+
+        <!-- Amount + For row -->
+        <div class="form-grid-2" style="margin-bottom:8px">
           <div class="form-group" style="margin:0">
             <label>Amount to Pay (₹) <span class="required">*</span></label>
-            <input type="number" id="sPayAmount" class="form-control" placeholder="Enter amount in rupees" min="0" step="1" oninput="enforceNonNeg(this)">
+            <div style="position:relative">
+              <input type="number" id="sPayAmount" class="form-control" placeholder="Enter amount in rupees"
+                min="0" step="1"
+                oninput="enforceNonNeg(this);capToMaxDue(this);updateAmountHint()"
+                style="padding-right:90px">
+              <button type="button" onclick="fillMaxDue()"
+                style="position:absolute;right:6px;top:50%;transform:translateY(-50%);
+                  background:var(--royal);color:#fff;border:none;border-radius:6px;
+                  padding:4px 10px;font-size:0.72rem;font-weight:600;cursor:pointer;
+                  white-space:nowrap;letter-spacing:0.02em"
+                title="Fill maximum due amount">
+                Pay Full
+              </button>
+            </div>
           </div>
           <div class="form-group" style="margin:0">
             <label>Payment For</label>
-            <select id="sPayFor" class="form-control">
-              <option>Current Year Fees</option>
-              <option>Arrear / Previous Dues</option>
-              <option>Examination Fees</option>
-              <option>Miscellaneous</option>
+            <select id="sPayFor" class="form-control" onchange="updateAmountHint();clearPayAmt()">
+              <option value="current">Current Year Fees</option>
+              <option value="arrear">Arrear / Previous Dues</option>
+              <option value="exam">Examination Fees</option>
+              <option value="misc">Miscellaneous</option>
             </select>
           </div>
         </div>
-        <button class="pay-trigger-btn" id="payTriggerBtn" onclick="openUpiModal()">
-          <span style="font-size:1.3rem">💳</span> Proceed to Pay via UPI
-        </button>
-        <div style="font-size:0.78rem;color:var(--text-muted);text-align:center;margin-top:10px">
-          You will be shown UPI app options and a QR code to complete your payment
+        <!-- Amount hint — shows max due & auto-caps -->
+        <div id="amountHint" style="font-size:0.82rem;margin-bottom:16px;padding:10px 14px;border-radius:8px;display:none;display:flex;align-items:center;gap:8px"></div>
+
+        <!-- Payment method tabs -->
+        <div style="display:flex;gap:0;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px">
+          <button id="tabUpi" onclick="switchPayTab('upi')"
+            style="flex:1;padding:10px;border:none;background:var(--royal);color:#fff;font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:500;cursor:pointer;transition:all 0.2s">
+            💳 UPI / QR
+          </button>
+          <button id="tabNet" onclick="switchPayTab('net')"
+            style="flex:1;padding:10px;border:none;background:#fafafa;color:var(--text-mid);font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:500;cursor:pointer;transition:all 0.2s;border-left:1.5px solid var(--border)">
+            🏦 Net Banking
+          </button>
+        </div>
+
+        <!-- UPI tab content -->
+        <div id="tabContentUpi">
+          <button class="pay-trigger-btn" onclick="openUpiModal()">
+            <span style="font-size:1.2rem">💳</span> Proceed to Pay via UPI
+          </button>
+          <p style="font-size:0.78rem;color:var(--text-muted);text-align:center;margin-top:8px">
+            Pay using GPay, PhonePe, Paytm, BHIM or scan QR code
+          </p>
+        </div>
+
+        <!-- Net Banking tab content -->
+        <div id="tabContentNet" style="display:none">
+          <div style="background:linear-gradient(135deg,#F0F8FF,#EAF4FF);border:1px solid rgba(0,80,180,0.15);border-radius:14px;padding:22px;text-align:center">
+            <div style="font-size:2rem;margin-bottom:8px">🏦</div>
+            <div style="font-family:'Cinzel',serif;font-size:0.9rem;color:#1A3A6E;font-weight:600;margin-bottom:14px">Bank Transfer / NEFT / RTGS</div>
+            <div id="netBankingDetails" style="text-align:left;background:#fff;border-radius:10px;padding:16px;font-size:0.88rem;line-height:2">
+              <!-- Filled by JS from admin settings -->
+            </div>
+            <p style="font-size:0.75rem;color:var(--text-muted);margin-top:12px">
+              After transferring, click below to notify the college
+            </p>
+            <button class="pay-trigger-btn" style="margin-top:8px;background:linear-gradient(135deg,#1A3A6E,#2255AA)" onclick="openNetBankingConfirm()">
+              ✓ I have completed the bank transfer
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1199,6 +1255,9 @@ async function renderStudentDash() {
           ${p.status==='Confirmed' ? `<button class="btn btn-outline btn-sm" style="font-size:0.75rem;padding:5px 10px" onclick="downloadReceipt(${(s.payments||[]).length-1-i})">⬇ Receipt</button>` : ''}
         </div>
       </div>`).join("");
+
+  // Show max-due hint on dashboard load
+  setTimeout(() => updateAmountHint(), 80);
 }
 
 // ═══════════════════════════════════
@@ -1208,14 +1267,205 @@ let _qrInstance = null;
 let _currentUpiAmt = 0;
 let _currentUpiFor = "";
 
+// ── Amount hint, cap & auto-fill ──
+function getMaxDue() {
+  const s = currentUser; if (!s) return null;
+  const forVal = document.getElementById("sPayFor")?.value;
+  const f = s.fees || {};
+  const yearMap = {"1st Year":1,"2nd Year":2,"3rd Year":3};
+  const yn   = yearMap[s.studyYear] || 1;
+  const yKey = ["year1","year2","year3"][yn-1];
+  if (forVal === "current") {
+    return Math.max(0,(f[yKey]?.due||0)-(f[yKey]?.paid||0));
+  } else if (forVal === "arrear") {
+    let a = 0;
+    if (yn >= 2) a += Math.max(0,(f.year1.due||0)-(f.year1.paid||0));
+    if (yn >= 3) a += Math.max(0,(f.year2.due||0)-(f.year2.paid||0));
+    return a;
+  }
+  return null; // exam/misc — no cap
+}
+
+function capToMaxDue(el) {
+  const max = getMaxDue();
+  if (max === null) return; // no cap for exam/misc
+  const val = parseFloat(el.value);
+  if (!isNaN(val) && val > max) {
+    el.value = max;
+    el.style.borderColor = "var(--danger)";
+    setTimeout(() => el.style.borderColor = "", 600);
+  } else {
+    el.style.borderColor = "";
+  }
+}
+
+function fillMaxDue() {
+  const max = getMaxDue();
+  const el  = document.getElementById("sPayAmount");
+  if (max === null) { showAlert("sPayAlert","info","No fixed limit for this payment type."); return; }
+  if (max === 0)    { showAlert("sPayAlert","warning","Nothing due for this category."); return; }
+  el.value = max;
+  el.style.borderColor = "var(--royal-light)";
+  setTimeout(() => el.style.borderColor = "", 800);
+  updateAmountHint();
+}
+
+function clearPayAmt() {
+  document.getElementById("sPayAmount").value = "";
+  document.getElementById("amountHint").style.display = "none";
+  clearAlert("sPayAlert");
+  updateAmountHint();
+}
+
+function updateAmountHint() {
+  const s = currentUser; if (!s) return;
+  const forVal = document.getElementById("sPayFor")?.value;
+  const f = s.fees || {};
+  const yearMap = {"1st Year":1,"2nd Year":2,"3rd Year":3};
+  const yn   = yearMap[s.studyYear] || 1;
+  const yKey = ["year1","year2","year3"][yn-1];
+
+  let maxAmt = null, hintMsg = "", hintType = "info";
+
+  if (forVal === "current") {
+    const due = Math.max(0,(f[yKey]?.due||0)-(f[yKey]?.paid||0));
+    maxAmt   = due;
+    hintMsg  = due > 0
+      ? `<span>📌</span><span>Maximum payable for <strong>${s.studyYear}</strong>: <strong style="font-size:1rem">₹${fmt(due)}</strong></span>`
+      : `<span>✅</span><span>Your ${s.studyYear} fees are fully cleared!</span>`;
+    hintType = due > 0 ? "warning" : "success";
+  } else if (forVal === "arrear") {
+    let arrear = 0;
+    if (yn >= 2) arrear += Math.max(0,(f.year1.due||0)-(f.year1.paid||0));
+    if (yn >= 3) arrear += Math.max(0,(f.year2.due||0)-(f.year2.paid||0));
+    maxAmt   = arrear;
+    hintMsg  = arrear > 0
+      ? `<span>📌</span><span>Total arrear dues: <strong style="font-size:1rem">₹${fmt(arrear)}</strong></span>`
+      : `<span>✅</span><span>No arrear dues pending!</span>`;
+    hintType = arrear > 0 ? "warning" : "success";
+  } else if (forVal === "exam") {
+    hintMsg = `<span>ℹ️</span><span>Enter the examination fee amount as communicated by the college.</span>`;
+    hintType = "info";
+  } else if (forVal === "misc") {
+    hintMsg = `<span>ℹ️</span><span>Enter the miscellaneous fee amount as communicated by the college.</span>`;
+    hintType = "info";
+  }
+
+  // Also set the input max attribute for browser-level validation
+  const inp = document.getElementById("sPayAmount");
+  if (maxAmt !== null) inp.max = maxAmt; else inp.removeAttribute("max");
+
+  const hint = document.getElementById("amountHint");
+  if (hintMsg) {
+    hint.style.display  = "flex";
+    hint.style.background = hintType==="success" ? "var(--success-bg)" : hintType==="warning" ? "var(--warning-bg)" : "#EEF2FF";
+    hint.style.color      = hintType==="success" ? "var(--success)"    : hintType==="warning" ? "var(--warning)"    : "#3730A3";
+    hint.style.border     = `1px solid ${hintType==="success" ? "rgba(27,107,58,0.2)" : hintType==="warning" ? "rgba(122,85,0,0.2)" : "rgba(55,48,163,0.2)"}`;
+    hint.innerHTML = hintMsg;
+  } else {
+    hint.style.display = "none";
+  }
+  window._maxPayAmt = maxAmt;
+}
+
+function switchPayTab(tab) {
+  const isUpi = tab === "upi";
+  document.getElementById("tabContentUpi").style.display = isUpi ? "block" : "none";
+  document.getElementById("tabContentNet").style.display = isUpi ? "none"  : "block";
+  document.getElementById("tabUpi").style.background = isUpi ? "var(--royal)" : "#fafafa";
+  document.getElementById("tabUpi").style.color      = isUpi ? "#fff" : "var(--text-mid)";
+  document.getElementById("tabNet").style.background = isUpi ? "#fafafa" : "var(--royal)";
+  document.getElementById("tabNet").style.color      = isUpi ? "var(--text-mid)" : "#fff";
+
+  if (!isUpi) {
+    DB.getSettings().then(settings => {
+      document.getElementById("netBankingDetails").innerHTML = `
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 16px">
+          <span style="color:var(--text-muted)">Account Name</span>  <strong>${escHtml(settings.accHolder||"Not set")}</strong>
+          <span style="color:var(--text-muted)">Account Number</span><strong>${escHtml(settings.accNo||"Not set")}</strong>
+          <span style="color:var(--text-muted)">Bank &amp; Branch</span> <strong>${escHtml(settings.bankName||"Not set")}</strong>
+          <span style="color:var(--text-muted)">IFSC Code</span>     <strong>${escHtml(settings.ifsc||"Not set")}</strong>
+        </div>`;
+    });
+  }
+}
+
+async function openNetBankingConfirm() {
+  clearAlert("sPayAlert");
+  const amt = parseFloat(document.getElementById("sPayAmount").value);
+  const forVal = document.getElementById("sPayFor").value;
+  const forLabel = document.getElementById("sPayFor").selectedOptions[0].text;
+
+  // Amount validation
+  const valid = await validatePayAmount(amt, forVal);
+  if (!valid) return;
+
+  _currentUpiAmt = amt;
+  _currentUpiFor = forLabel;
+
+  // Reuse same confirm modal (Step 1) for net banking
+  document.getElementById("upiConfirmAmt").textContent  = "₹" + fmt(amt);
+  document.getElementById("upiConfirmFor").textContent  = "For: " + forLabel + " (Bank Transfer)";
+  document.getElementById("upiModalAmtChip").textContent = "₹" + fmt(amt);
+  document.getElementById("upiModalTitle").textContent  = "Confirm Bank Transfer";
+  clearAlert("upiStep1Alert");
+
+  // Override Step 2 button to record directly (no QR needed)
+  window._payMode = "netbanking";
+  document.getElementById("upiStep1").classList.add("active");
+  document.getElementById("upiStep2").classList.remove("active");
+  document.getElementById("upiModalOverlay").classList.remove("hidden");
+}
+
+// Amount validation helper — returns true if ok, shows error and returns false if not
+async function validatePayAmount(amt, forVal) {
+  if (isNaN(amt) || amt <= 0) {
+    showAlert("sPayAlert","danger","Please enter a valid amount greater than ₹0.");
+    return false;
+  }
+  const s = currentUser;
+  const f = s.fees || {};
+  const yearMap = {"1st Year":1,"2nd Year":2,"3rd Year":3};
+  const yn   = yearMap[s.studyYear] || 1;
+  const yKey = ["year1","year2","year3"][yn-1];
+
+  if (forVal === "current") {
+    const due = Math.max(0,(f[yKey]?.due||0)-(f[yKey]?.paid||0));
+    if (due === 0) {
+      showAlert("sPayAlert","warning","Your current year fees are already cleared. Nothing to pay.");
+      return false;
+    }
+    if (amt > due) {
+      showAlert("sPayAlert","danger",`Amount cannot exceed your current year due of <strong>₹${fmt(due)}</strong>. Please enter ₹${fmt(due)} or less.`);
+      return false;
+    }
+  } else if (forVal === "arrear") {
+    let arrear = 0;
+    if (yn >= 2) arrear += Math.max(0,(f.year1.due||0)-(f.year1.paid||0));
+    if (yn >= 3) arrear += Math.max(0,(f.year2.due||0)-(f.year2.paid||0));
+    if (arrear === 0) {
+      showAlert("sPayAlert","warning","You have no arrear dues.");
+      return false;
+    }
+    if (amt > arrear) {
+      showAlert("sPayAlert","danger",`Amount cannot exceed your total arrear dues of <strong>₹${fmt(arrear)}</strong>.`);
+      return false;
+    }
+  }
+  return true;
+}
+
 // STEP 1 — open confirm popup
 async function openUpiModal() {
   clearAlert("sPayAlert");
-  const amt = parseFloat(document.getElementById("sPayAmount").value);
-  if (isNaN(amt) || amt <= 0) {
-    showAlert("sPayAlert","danger","Please enter a valid amount greater than ₹0 first.");
-    return;
-  }
+  window._payMode = "upi";
+  const amt    = parseFloat(document.getElementById("sPayAmount").value);
+  const forVal = document.getElementById("sPayFor").value;
+  const forLabel = document.getElementById("sPayFor").selectedOptions[0].text;
+
+  const valid = await validatePayAmount(amt, forVal);
+  if (!valid) return;
+
   const settings = await DB.getSettings();
   const upiId = settings.upiId || "";
   if (!upiId) {
@@ -1224,23 +1474,25 @@ async function openUpiModal() {
   }
   window._portalUpiId = upiId;
   _currentUpiAmt = amt;
-  _currentUpiFor = document.getElementById("sPayFor").value;
+  _currentUpiFor = forLabel;
 
-  // Populate step 1 confirm screen
-  document.getElementById("upiConfirmAmt").textContent = "₹" + fmt(amt);
-  document.getElementById("upiConfirmFor").textContent = "For: " + _currentUpiFor;
+  document.getElementById("upiConfirmAmt").textContent  = "₹" + fmt(amt);
+  document.getElementById("upiConfirmFor").textContent  = "For: " + forLabel;
   document.getElementById("upiModalAmtChip").textContent = "₹" + fmt(amt);
-  document.getElementById("upiModalTitle").textContent = "Confirm Payment";
+  document.getElementById("upiModalTitle").textContent  = "Confirm Payment";
   clearAlert("upiStep1Alert");
 
-  // Show step 1
   document.getElementById("upiStep1").classList.add("active");
   document.getElementById("upiStep2").classList.remove("active");
   document.getElementById("upiModalOverlay").classList.remove("hidden");
 }
 
-// STEP 2 — proceed to QR + apps
+// STEP 2 — proceed to QR + apps (or skip to record if net banking)
 function goToUpiStep2() {
+  if (window._payMode === "netbanking") {
+    markPaymentDone();
+    return;
+  }
   const amt    = _currentUpiAmt;
   const upiId  = window._portalUpiId || "";
   const payeeName = "Pallavan Polytechnic College";
