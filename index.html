@@ -380,6 +380,7 @@ textarea.form-control{resize:vertical;min-height:80px}
           <div class="form-group">
             <label>Application ID <span class="required">*</span></label>
             <input type="text" id="rAppId" class="form-control" placeholder="e.g. PPT2024001"
+              oninput="this.value=this.value.toUpperCase();scheduleAppIdCheck()"
               onblur="validateAppId()">
             <div class="field-error" id="err-rAppId"></div>
           </div>
@@ -422,14 +423,38 @@ textarea.form-control{resize:vertical;min-height:80px}
         <div class="section-divider">Personal Details</div>
         <div class="form-group">
           <label>Full Name (as per records) <span class="required">*</span></label>
-          <input type="text" id="rName" class="form-control" placeholder="Enter full name"
-            onblur="validateField('rName','Name is required')">
+          <input type="text" id="rName" class="form-control" placeholder="ENTER FULL NAME"
+            oninput="this.value=this.value.toUpperCase()"
+            onkeypress="return /[a-zA-Z ]/.test(String.fromCharCode(event.charCode))"
+            onblur="validateField('rName','Name is required')"
+            style="text-transform:uppercase;letter-spacing:0.04em">
           <div class="field-error" id="err-rName"></div>
         </div>
         <div class="form-grid-2">
           <div class="form-group">
             <label>Date of Birth <span class="required">*</span></label>
-            <input type="date" id="rDob" class="form-control" onblur="validateDob()">
+            <!-- Hidden actual date field for validation/storage -->
+            <input type="hidden" id="rDob">
+            <div style="display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:8px">
+              <select id="rDobDay" class="form-control" onchange="assembleDob();validateDob()" style="padding-left:8px">
+                <option value="">DD</option>
+              </select>
+              <select id="rDobMonth" class="form-control" onchange="assembleDob();populateDobDays();validateDob()" style="padding-left:8px">
+                <option value="">Month</option>
+                <option value="01">January</option><option value="02">February</option>
+                <option value="03">March</option><option value="04">April</option>
+                <option value="05">May</option><option value="06">June</option>
+                <option value="07">July</option><option value="08">August</option>
+                <option value="09">September</option><option value="10">October</option>
+                <option value="11">November</option><option value="12">December</option>
+              </select>
+              <select id="rDobYear" class="form-control" onchange="assembleDob();populateDobDays();validateDob()" style="padding-left:8px">
+                <option value="">YYYY</option>
+              </select>
+            </div>
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">
+              Student must be at least 14 years old
+            </div>
             <div class="field-error" id="err-rDob"></div>
           </div>
           <div class="form-group">
@@ -451,7 +476,7 @@ textarea.form-control{resize:vertical;min-height:80px}
           <div class="form-group">
             <label>Aadhar Number <span class="required">*</span></label>
             <input type="text" id="rAadhar" class="form-control" placeholder="12-digit Aadhar" maxlength="12"
-              oninput="this.value=this.value.replace(/\D/g,'')"
+              oninput="this.value=this.value.replace(/\D/g,''); liveValidateAadhar(this)"
               onblur="validateAadhar()">
             <div class="field-error" id="err-rAadhar"></div>
           </div>
@@ -466,7 +491,8 @@ textarea.form-control{resize:vertical;min-height:80px}
         <div class="section-divider">Previous School Details</div>
         <div class="form-group">
           <label>School Name <span class="required">*</span></label>
-          <input type="text" id="rSchoolName" class="form-control" placeholder="e.g. Govt. Higher Secondary School, Kanchipuram"
+          <input type="text" id="rSchoolName" class="form-control" placeholder="E.G. GOVT. HIGHER SECONDARY SCHOOL"
+            oninput="this.value=this.value.toUpperCase()"
             onblur="validateField('rSchoolName','School name is required')">
           <div class="field-error" id="err-rSchoolName"></div>
         </div>
@@ -486,7 +512,7 @@ textarea.form-control{resize:vertical;min-height:80px}
           <div class="form-group">
             <label>Pincode <span class="required">*</span></label>
             <input type="text" id="rSchoolPincode" class="form-control" placeholder="6-digit pincode" maxlength="6"
-              oninput="this.value=this.value.replace(/\D/g,'')"
+              oninput="this.value=this.value.replace(/\D/g,''); liveValidatePincode(this)"
               onblur="validatePincode()">
             <div class="field-error" id="err-rSchoolPincode"></div>
           </div>
@@ -501,7 +527,7 @@ textarea.form-control{resize:vertical;min-height:80px}
           <div class="form-group">
             <label>Mobile Number <span class="required">*</span></label>
             <input type="tel" id="rMobile" class="form-control" placeholder="10-digit mobile number" maxlength="10"
-              oninput="this.value=this.value.replace(/\D/g,'')"
+              oninput="this.value=this.value.replace(/\D/g,''); liveValidateMobile(this,'err-rMobile')"
               onblur="validateMobile('rMobile','err-rMobile')">
             <div class="field-error" id="err-rMobile"></div>
           </div>
@@ -517,27 +543,29 @@ textarea.form-control{resize:vertical;min-height:80px}
         <div class="form-grid-2">
           <div class="form-group">
             <label>Father's Name <span class="required">*</span></label>
-            <input type="text" id="rFatherName" class="form-control" placeholder="Father's full name"
+            <input type="text" id="rFatherName" class="form-control" placeholder="FATHER'S FULL NAME"
+              oninput="this.value=this.value.toUpperCase()"
               onblur="validateField('rFatherName','Father's name is required')">
             <div class="field-error" id="err-rFatherName"></div>
           </div>
           <div class="form-group">
             <label>Father's Mobile <span class="required">*</span></label>
             <input type="tel" id="rFatherMobile" class="form-control" placeholder="10-digit number" maxlength="10"
-              oninput="this.value=this.value.replace(/\D/g,'')"
+              oninput="this.value=this.value.replace(/\D/g,''); liveValidateMobile(this,'err-rFatherMobile')"
               onblur="validateMobile('rFatherMobile','err-rFatherMobile')">
             <div class="field-error" id="err-rFatherMobile"></div>
           </div>
           <div class="form-group">
             <label>Mother's Name <span class="required">*</span></label>
-            <input type="text" id="rMotherName" class="form-control" placeholder="Mother's full name"
+            <input type="text" id="rMotherName" class="form-control" placeholder="MOTHER'S FULL NAME"
+              oninput="this.value=this.value.toUpperCase()"
               onblur="validateField('rMotherName','Mother's name is required')">
             <div class="field-error" id="err-rMotherName"></div>
           </div>
           <div class="form-group">
             <label>Mother's Mobile <span class="required">*</span></label>
             <input type="tel" id="rMotherMobile" class="form-control" placeholder="10-digit number" maxlength="10"
-              oninput="this.value=this.value.replace(/\D/g,'')"
+              oninput="this.value=this.value.replace(/\D/g,''); liveValidateMobile(this,'err-rMotherMobile')"
               onblur="validateMobile('rMotherMobile','err-rMotherMobile')">
             <div class="field-error" id="err-rMotherMobile"></div>
           </div>
@@ -1063,6 +1091,10 @@ function showPage(id) {
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
   document.getElementById(id).classList.add("active");
   window.scrollTo(0,0);
+  if (id === "pagRegister") {
+    // Small delay to ensure DOM is ready
+    setTimeout(initDobField, 50);
+  }
 }
 function updateHeader() {
   const hr = document.getElementById("headerRight");
@@ -1081,6 +1113,162 @@ function enforceNonNeg(el) {
   if (!isNaN(v) && v < 0) el.value = 0;
 }
 
+// ═══════════════════════════════════
+//  DOB DROPDOWN HELPERS (3-select: Day / Month / Year)
+// ═══════════════════════════════════
+
+function initDobSelectors() {
+  // Populate year dropdown: max = current year - 14 (must be at least 14)
+  const yearEl = document.getElementById("rDobYear");
+  if (!yearEl) return;
+  const maxYear = new Date().getFullYear() - 14;
+  const minYear = 1970;
+  yearEl.innerHTML = '<option value="">YYYY</option>';
+  for (let y = maxYear; y >= minYear; y--) {
+    yearEl.innerHTML += `<option value="${y}">${y}</option>`;
+  }
+  populateDobDays();
+}
+
+function populateDobDays() {
+  const dayEl   = document.getElementById("rDobDay");
+  const monthEl = document.getElementById("rDobMonth");
+  const yearEl  = document.getElementById("rDobYear");
+  if (!dayEl) return;
+  const curDay   = dayEl.value;
+  const month    = parseInt(monthEl?.value) || 0;
+  const year     = parseInt(yearEl?.value)  || 2000;
+  const daysInMonth = month ? new Date(year, month, 0).getDate() : 31;
+  dayEl.innerHTML = '<option value="">DD</option>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const val = String(d).padStart(2,"0");
+    dayEl.innerHTML += `<option value="${val}" ${curDay===val?"selected":""}>${val}</option>`;
+  }
+}
+
+function assembleDob() {
+  const d = document.getElementById("rDobDay")?.value;
+  const m = document.getElementById("rDobMonth")?.value;
+  const y = document.getElementById("rDobYear")?.value;
+  const hidden = document.getElementById("rDob");
+  if (hidden) hidden.value = (d && m && y) ? `${y}-${m}-${d}` : "";
+}
+
+function initDobField() {
+  // Just populate the year selector — no native date picker needed
+  initDobSelectors();
+}
+
+function validateDob() {
+  assembleDob();
+  const val = document.getElementById("rDob")?.value;
+  if (!val) {
+    // Check if any part is filled
+    const d = document.getElementById("rDobDay")?.value;
+    const m = document.getElementById("rDobMonth")?.value;
+    const y = document.getElementById("rDobYear")?.value;
+    if (d||m||y) { setFieldError("err-rDob","Please complete all 3 date fields"); return false; }
+    setFieldError("err-rDob","Date of birth is required"); return false;
+  }
+  const dob   = new Date(val);
+  const today = new Date();
+  const age   = today.getFullYear() - dob.getFullYear()
+    - (today < new Date(today.getFullYear(), dob.getMonth(), dob.getDate()) ? 1 : 0);
+  if (age < 14) {
+    setFieldError("err-rDob", `Student must be at least 14 years old (born on or before ${getMaxDobStr()})`);
+    return false;
+  }
+  clearFieldError("err-rDob"); return true;
+}
+
+function getMaxDobStr() {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - 14);
+  return d.toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
+}
+
+// ═══════════════════════════════════
+//  INLINE REGISTRATION VALIDATORS
+// ═══════════════════════════════════
+function setFieldError(errId, msg) {
+  const errEl = document.getElementById(errId);
+  if (!errEl) return;
+  errEl.textContent = msg;
+  const parent = errEl.parentElement;
+  const input  = parent?.querySelector(".form-control");
+  if (input) { input.classList.add("is-invalid"); input.classList.remove("is-valid"); }
+}
+function clearFieldError(errId) {
+  const errEl = document.getElementById(errId);
+  if (!errEl) return;
+  errEl.textContent = "";
+  const parent = errEl.parentElement;
+  const input  = parent?.querySelector(".form-control");
+  if (input) { input.classList.remove("is-invalid"); input.classList.add("is-valid"); }
+}
+function validateField(id, errMsg) {
+  const el = document.getElementById(id);
+  const errId = "err-" + id;
+  if (!el || !el.value.trim()) { setFieldError(errId, errMsg); return false; }
+  clearFieldError(errId); return true;
+}
+function validateSelect(id, errMsg) {
+  const el = document.getElementById(id);
+  const errId = "err-" + id;
+  if (!el || !el.value) { setFieldError(errId, errMsg); return false; }
+  clearFieldError(errId); return true;
+}
+function validateMobile(id, errId) {
+  const el  = document.getElementById(id);
+  if (!el) return false;
+  const val = el.value.trim();
+  if (!val)                  { setFieldError(errId, "Mobile number is required"); return false; }
+  if (!/^\d{10}$/.test(val)) { setFieldError(errId, "Must be exactly 10 digits"); return false; }
+  clearFieldError(errId); return true;
+}
+function validateAadhar() {
+  const val = (document.getElementById("rAadhar")?.value || "").trim();
+  if (!val)                  { setFieldError("err-rAadhar", "Aadhar number is required"); return false; }
+  if (!/^\d{12}$/.test(val)) { setFieldError("err-rAadhar", "Must be exactly 12 digits"); return false; }
+  clearFieldError("err-rAadhar"); return true;
+}
+function validatePincode() {
+  const val = (document.getElementById("rSchoolPincode")?.value || "").trim();
+  if (!val)                 { setFieldError("err-rSchoolPincode", "Pincode is required"); return false; }
+  if (!/^\d{6}$/.test(val)) { setFieldError("err-rSchoolPincode", "Must be exactly 6 digits"); return false; }
+  clearFieldError("err-rSchoolPincode"); return true;
+}
+function validateEmail() {
+  const val = (document.getElementById("rEmail")?.value || "").trim();
+  if (!val) { clearFieldError("err-rEmail"); return true; }
+  if (!/^[^@]+@[^@]+\.[^@]+$/.test(val)) { setFieldError("err-rEmail", "Enter a valid email address"); return false; }
+  clearFieldError("err-rEmail"); return true;
+}
+function validatePwd() {
+  const val = document.getElementById("rPwd")?.value || "";
+  if (val.length < 6) { setFieldError("err-rPwd", "Minimum 6 characters required"); return false; }
+  clearFieldError("err-rPwd");
+  const v2 = document.getElementById("rPwd2")?.value || "";
+  if (v2) validatePwd2();
+  return true;
+}
+function validatePwd2() {
+  const p1 = document.getElementById("rPwd")?.value  || "";
+  const p2 = document.getElementById("rPwd2")?.value || "";
+  if (!p2)     { setFieldError("err-rPwd2", "Please confirm your password"); return false; }
+  if (p1!==p2) { setFieldError("err-rPwd2", "Passwords do not match");       return false; }
+  clearFieldError("err-rPwd2"); return true;
+}
+async function validateAppId() {
+  const el  = document.getElementById("rAppId");
+  const val = (el?.value || "").trim();
+  if (!val) { setFieldError("err-rAppId", "Application ID is required"); return false; }
+  try {
+    const existing = await DB.getStudent(val);
+    if (existing) { setFieldError("err-rAppId", "This Application ID is already registered"); return false; }
+  } catch(e) { /* skip if offline */ }
+  clearFieldError("err-rAppId"); return true;
+}
 
 // ═══════════════════════════════════
 //  LOGIN
@@ -1140,7 +1328,7 @@ async function doRegister() {
     studyYear:    v("rStudyYear"),
     course:       v("rCourse"),
     name:         v("rName"),
-    dob:          v("rDob"),
+    dob:          (()=>{ assembleDob(); return document.getElementById("rDob")?.value||""; })(),
     gender:       v("rGender"),
     community:    v("rCommunity"),
     aadhar:       v("rAadhar"),
@@ -2432,9 +2620,31 @@ async function restoreSession() {
   return false;
 }
 
+// ── Live (keystroke) validators ──
+function liveValidateMobile(el, errId) {
+  const val = (el?.value||"").trim();
+  if (!val) { clearFieldError(errId); return; }
+  if (val.length < 10) { setFieldError(errId, val.length+"/10 digits — need "+(10-val.length)+" more"); return; }
+  if (!/^\d{10}$/.test(val)) { setFieldError(errId,"Must be exactly 10 digits"); return; }
+  clearFieldError(errId);
+}
+function liveValidateAadhar(el) {
+  const val = (el?.value||"").trim();
+  if (!val) { clearFieldError("err-rAadhar"); return; }
+  if (val.length < 12) { setFieldError("err-rAadhar", val.length+"/12 digits — need "+(12-val.length)+" more"); return; }
+  clearFieldError("err-rAadhar");
+}
+function liveValidatePincode(el) {
+  const val = (el?.value||"").trim();
+  if (!val) { clearFieldError("err-rSchoolPincode"); return; }
+  if (val.length < 6) { setFieldError("err-rSchoolPincode", val.length+"/6 digits — need "+(6-val.length)+" more"); return; }
+  clearFieldError("err-rSchoolPincode");
+}
+
 // ─── INIT ───
 window.addEventListener("DOMContentLoaded", async()=>{
   await initDB();
+  initDobSelectors();
   // Try to restore previous session after DB is ready
   await restoreSession();
 });
