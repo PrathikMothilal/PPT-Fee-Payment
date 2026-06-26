@@ -15,8 +15,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <!-- QRCode.js for UPI QR -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<!-- EmailJS for sending receipts -->
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <!-- EmailJS -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
@@ -860,6 +858,10 @@ textarea.form-control{resize:vertical;min-height:80px}
               <span class="setting-val" id="viewAccNo"><em class="text-muted">Not set</em></span>
             </div>
             <div class="setting-row">
+              <span class="setting-label">Email Notifications</span>
+              <span class="setting-val"><span class="badge badge-green">✅ Active</span></span>
+            </div>
+            <div class="setting-row">
               <span class="setting-label">Fast2SMS API Key</span>
               <span class="setting-val" id="viewSmsKey"><em class="text-muted">Not set</em></span>
             </div>
@@ -1078,6 +1080,19 @@ const DB = {
 const ADMIN_EMAIL = "pallavanppt86@gmail.com";
 const ADMIN_PWD   = "PPT@1986";
 let currentUser = null;
+
+// ── EmailJS credentials (hardcoded — no admin setup needed) ──
+const EJS = {
+  publicKey:   "-US4TqL_g5wD-lHUF",
+  serviceId:   "pallavan_service",
+  tplAdmin:    "template_ag7ecr7",   // Admin payment alert
+  tplStudent:  "template_hlgvw5x",   // Student confirmed/rejected
+};
+// Initialise EmailJS once
+(function initEmailJS() {
+  try { emailjs.init(EJS.publicKey); console.log("✅ EmailJS ready"); }
+  catch(e) { console.warn("EmailJS init failed:", e.message); }
+})();
 
 // ─── Loading ───
 function setLoading(show, msg="Loading…") {
@@ -1889,13 +1904,24 @@ async function markPaymentDone() {
   try {
     const stu = await DB.getStudent(currentUser.appId);
     stu.payments = stu.payments || [];
-    stu.payments.push({ amount:amt, forLabel, date:new Date().toISOString(), status:"Pending Verification" });
+    const refId = "PPT-" + stu.appId + "-" + Date.now();
+    const payment = {
+      amount: amt, forLabel,
+      referenceId: refId,
+      date: new Date().toISOString(),
+      status: "Pending Verification"
+    };
+    stu.payments.push(payment);
     await DB.setStudent(stu);
     currentUser = stu;
+
+    // Send admin notification email automatically
+    await sendAdminNotificationEmail(stu, payment);
+
     setLoading(false);
     closeUpiModal();
     document.getElementById("sPayAmount").value = "";
-    showAlert("sPayAlert","success",`✅ Payment of ₹${fmt(amt)} recorded! It will appear as Confirmed in your Payment History once verified by the college office.`);
+    showAlert("sPayAlert","success",`✅ Payment of ₹${fmt(amt)} recorded! The college office has been notified. Your receipt will appear once verified.`);
     await renderStudentDash();
   } catch(e) {
     setLoading(false);
@@ -1917,18 +1943,12 @@ async function renderAdminDash() {
     // Populate settings display
     document.getElementById("viewUpiId").innerHTML    = settings.upiId    ? escHtml(settings.upiId)    : '<em class="text-muted">Not set</em>';
     document.getElementById("viewAccNo").innerHTML    = settings.accNo    ? escHtml(settings.accNo)    : '<em class="text-muted">Not set</em>';
-    document.getElementById("viewEmailSvc").innerHTML = settings.emailSvc ? escHtml(settings.emailSvc) : '<em class="text-muted">Not set</em>';
-    document.getElementById("viewEmailTpl").innerHTML = settings.emailTpl ? escHtml(settings.emailTpl) : '<em class="text-muted">Not set</em>';
-    document.getElementById("viewEmailKey").innerHTML = settings.emailKey ? '••••••••••••'              : '<em class="text-muted">Not set</em>';
     document.getElementById("viewFee1").textContent   = "₹" + fmt(settings.defFee1||0);
     document.getElementById("viewFee2").textContent   = "₹" + fmt(settings.defFee2||0);
     document.getElementById("viewFee3").textContent   = "₹" + fmt(settings.defFee3||0);
     // Populate edit fields too
     if (document.getElementById("adminUpiId"))    document.getElementById("adminUpiId").value    = settings.upiId||"";
     if (document.getElementById("adminAccNo"))    document.getElementById("adminAccNo").value    = settings.accNo||"";
-    if (document.getElementById("adminEmailSvc")) document.getElementById("adminEmailSvc").value = settings.emailSvc||"";
-    if (document.getElementById("adminEmailTpl")) document.getElementById("adminEmailTpl").value = settings.emailTpl||"";
-    if (document.getElementById("adminEmailKey")) document.getElementById("adminEmailKey").value = settings.emailKey||"";
     if (document.getElementById("defFee1"))       document.getElementById("defFee1").value       = settings.defFee1||"";
     if (document.getElementById("defFee2"))       document.getElementById("defFee2").value       = settings.defFee2||"";
     if (document.getElementById("defFee3"))       document.getElementById("defFee3").value       = settings.defFee3||"";
@@ -2035,9 +2055,6 @@ async function savePaymentSettings() {
   s.upiId    = document.getElementById("adminUpiId").value.trim();
   s.accNo    = document.getElementById("adminAccNo").value.trim();
   s.smsKey   = document.getElementById("adminSmsKey")?.value?.trim() || s.smsKey || "";
-  s.emailSvc = document.getElementById("adminEmailSvc").value.trim();
-  s.emailTpl = document.getElementById("adminEmailTpl").value.trim();
-  s.emailKey = document.getElementById("adminEmailKey").value.trim();
   setLoading(true,"Saving…");
   await DB.setSettings(s);
   setLoading(false);
@@ -2106,14 +2123,13 @@ async function confirmPayment(appId, payIdx) {
     }
     await DB.setStudent(stu);
 
-    // Send SMS + Email notifications
+    // Send SMS + Email notifications (hardcoded EmailJS — no settings needed)
     const settings = await DB.getSettings();
     if (settings.smsKey && stu.mobile) {
       await sendSMS(settings.smsKey, stu, p);
     }
-    if (settings.emailSvc && settings.emailTpl && settings.emailKey && stu.email) {
-      await sendEmailReceipt(settings, stu, p);
-    }
+    // Always try email — credentials are hardcoded
+    await sendStudentStatusEmail(stu, p, "confirmed");
 
     setLoading(false);
     await renderAdminDash();
@@ -2125,44 +2141,98 @@ async function rejectPayment(appId, payIdx) {
   try {
     const stu = await DB.getStudent(appId);
     if (!stu) { setLoading(false); return; }
-    stu.payments[payIdx].status = "Rejected";
+    const p = stu.payments[payIdx];
+    p.status = "Rejected";
+    p.rejectedAt = new Date().toISOString();
     await DB.setStudent(stu);
+    // Send rejection email to student
+    await sendStudentStatusEmail(stu, p, "rejected");
     setLoading(false);
     await renderAdminDash();
   } catch(e) { setLoading(false); }
 }
 
 // ═══════════════════════════════════
-//  EMAIL — EmailJS
+//  EMAIL — EmailJS (3 automated emails)
 // ═══════════════════════════════════
-async function sendEmailReceipt(settings, stu, payment) {
-  try {
-    emailjs.init(settings.emailKey);
-    const totalPaid = ["year1","year2","year3"].reduce((a,y)=>a+(stu.fees?.[y]?.paid||0),0);
-    const totalDue  = ["year1","year2","year3"].reduce((a,y)=>a+(stu.fees?.[y]?.due||0),0);
-    const outstanding = Math.max(0, totalDue - totalPaid);
 
-    const templateParams = {
-      to_name:        stu.name,
-      to_email:       stu.email,
-      student_name:   stu.name,
-      app_id:         stu.appId,
-      course:         stu.course,
-      year:           stu.studyYear,
-      amount:         "₹" + fmt(payment.amount),
-      payment_for:    payment.forLabel,
-      receipt_no:     payment.receiptNo || "—",
-      payment_date:   formatDate(payment.confirmedAt || payment.date),
-      outstanding:    "₹" + fmt(outstanding),
-      college_name:   "Pallavan Polytechnic College",
-      college_place:  "Kolivakkam, Kanchipuram",
+function calcBalance(stu) {
+  const yn = {"1st Year":1,"2nd Year":2,"3rd Year":3}[stu.studyYear]||1;
+  let due=0, paid=0;
+  ["year1","year2","year3"].forEach((y,i)=>{
+    if (i < yn) {
+      due  += stu.fees?.[y]?.due  || 0;
+      paid += stu.fees?.[y]?.paid || 0;
+    }
+  });
+  return Math.max(0, due - paid);
+}
+
+// EMAIL 1 — Admin notification when student submits payment
+async function sendAdminNotificationEmail(stu, payment) {
+  try {
+    const balance = calcBalance(stu);
+    const params = {
+      student_name:  stu.name,
+      app_id:        stu.appId,
+      course:        stu.course,
+      study_year:    stu.studyYear,
+      mobile:        stu.mobile,
+      amount:        fmt(payment.amount),
+      payment_for:   payment.forLabel,
+      reference_id:  payment.referenceId || "—",
+      date_time:     formatDate(payment.date),
+      balance_due:   fmt(balance),
+    };
+    await emailjs.send(EJS.serviceId, EJS.tplAdmin, params);
+    console.log("✅ Admin notification email sent");
+  } catch(e) {
+    console.warn("Admin email failed (non-critical):", e.message);
+  }
+}
+
+// EMAIL 2 & 3 — Student confirmed or rejected
+async function sendStudentStatusEmail(stu, payment, status) {
+  if (!stu.email) {
+    console.log("Student has no email — skipping email notification");
+    return;
+  }
+  try {
+    const balance = calcBalance(stu);
+    const isConfirmed = status === "confirmed";
+
+    const params = {
+      student_email:    stu.email,
+      student_name:     stu.name,
+      app_id:           stu.appId,
+      course:           stu.course,
+      study_year:       stu.studyYear,
+      amount:           fmt(payment.amount),
+      payment_for:      payment.forLabel,
+      reference_id:     payment.referenceId || payment.receiptNo || "—",
+      date_time:        formatDate(isConfirmed ? (payment.confirmedAt||payment.date) : (payment.rejectedAt||payment.date)),
+      balance_due:      fmt(balance),
+      // Dynamic content — same template shows different content based on status
+      email_subject:    isConfirmed
+                          ? "✅ Payment Confirmed — ₹" + fmt(payment.amount)
+                          : "⚠️ Payment Not Verified — Please Contact College",
+      status_bg:        isConfirmed ? "#EAF5EE"  : "#FBF0F0",
+      status_color:     isConfirmed ? "#1B6B3A"  : "#8B1A1A",
+      status_message:   isConfirmed
+                          ? "✅ Your payment of ₹" + fmt(payment.amount) + " has been confirmed!"
+                          : "⚠️ Your payment of ₹" + fmt(payment.amount) + " could not be verified",
+      email_body_text:  isConfirmed
+                          ? "Your fee payment has been verified and confirmed by Pallavan Polytechnic College. Please find the details below."
+                          : "We were unable to verify your payment. This could be because the payment was not received in our account, or the amount did not match. Please contact the college office with your transaction screenshot.",
+      footer_note:      isConfirmed
+                          ? "📄 You can download your PDF receipt anytime by logging into the fee portal → Payment History → ⬇ Receipt button."
+                          : "📞 Please visit or contact Pallavan Polytechnic College, Kolivakkam with your UPI transaction screenshot for assistance.",
     };
 
-    await emailjs.send(settings.emailSvc, settings.emailTpl, templateParams);
-    console.log("✅ Email receipt sent to", stu.email);
+    await emailjs.send(EJS.serviceId, EJS.tplStudent, params);
+    console.log("✅ Student", status, "email sent to", stu.email);
   } catch(e) {
-    console.warn("Email send failed:", e);
-    // Non-fatal — don't block the confirmation flow
+    console.warn("Student email failed (non-critical):", e.message);
   }
 }
 
