@@ -881,6 +881,27 @@ textarea.form-control{resize:vertical;min-height:80px}
               <input type="text" id="adminAccNo" class="form-control" placeholder="College bank account number">
             </div>
             <div class="form-group">
+              <label>Academic Year Start Date <span class="required">*</span></label>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div>
+                  <select id="acadCutoffDay" class="form-control"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option><option value="26">26</option><option value="27">27</option><option value="28">28</option><option value="29">29</option><option value="30">30</option><option value="31">31</option></select>
+                  <div style="font-size:0.72rem;color:var(--text-muted);margin-top:3px">Day</div>
+                </div>
+                <div>
+                  <select id="acadCutoffMonth" class="form-control"><option value="0">January</option><option value="1">February</option>
+                    <option value="2">March</option><option value="3">April</option>
+                    <option value="4">May</option><option value="5">June</option>
+                    <option value="6">July</option><option value="7">August</option>
+                    <option value="8">September</option><option value="9">October</option>
+                    <option value="10">November</option><option value="11">December</option></select>
+                  <div style="font-size:0.72rem;color:var(--text-muted);margin-top:3px">Month</div>
+                </div>
+              </div>
+              <div style="font-size:0.75rem;color:var(--text-muted);margin-top:6px">
+                📅 On this date every year, students automatically move to the next year. Unpaid fees carry forward as arrears.
+              </div>
+            </div>
+            <div class="form-group">
               <label>Fast2SMS API Key <span class="optional">(for SMS alerts)</span></label>
               <input type="text" id="adminSmsKey" class="form-control" placeholder="Get free key at fast2sms.com">
             </div>
@@ -1101,11 +1122,20 @@ function computeCurrentYear(stu) {
   const cm      = window._acadCutoff.month;
   const cd      = window._acadCutoff.day;
   const cutoff  = new Date(now.getFullYear(), cm, cd);
-  // How many cutoff dates have passed since admission year?
+
+  // Auto-calculate year from admission year + cutoff date
   let yearsElapsed = now.getFullYear() - admYear;
-  if (now < cutoff) yearsElapsed--; // haven't crossed this year's cutoff yet
+  if (now < cutoff) yearsElapsed--;
   yearsElapsed = Math.max(0, yearsElapsed);
-  return Math.min(3, yearsElapsed + 1); // 1, 2, or 3
+  const autoYear = Math.min(3, yearsElapsed + 1);
+
+  // If admin has MANUALLY set studyYear, respect that override
+  // (admin override wins if it is >= auto-calculated year)
+  const manualMap = { "1st Year":1, "2nd Year":2, "3rd Year":3 };
+  const manualYear = manualMap[stu.studyYear] || 0;
+  if (manualYear > autoYear) return manualYear; // admin promoted the student early
+
+  return autoYear;
 }
 
 // Returns correct studyYear string based on admission year + auto-increment
@@ -1573,8 +1603,14 @@ async function renderStudentDash() {
   } catch(e) { /* use cached if offline */ }
 
   const s = currentUser;
+  // Use computeCurrentYear to get the correct year (respects admin override)
+  const effectiveYearNum = computeCurrentYear(s);
+  const effectiveYearStr = ["1st Year","2nd Year","3rd Year"][effectiveYearNum-1];
+  // Update student record in memory if auto-year differs
+  if (s.studyYear !== effectiveYearStr) s.studyYear = effectiveYearStr;
+
   document.getElementById("sWelcomeName").textContent = "Welcome, " + s.name;
-  document.getElementById("sWelcomeMeta").textContent = s.course + " · " + s.studyYear + " · Admitted: " + s.admYear;
+  document.getElementById("sWelcomeMeta").textContent = s.course + " · " + effectiveYearStr + " · Admitted: " + s.admYear;
   document.getElementById("sAppId").textContent = s.appId;
   document.getElementById("sDashSubtitle").textContent = "Pallavan Polytechnic College · " + s.course;
   document.getElementById("sAcadYear").textContent = "Academic Year " + s.admYear + "–" + (parseInt(s.admYear)+1);
@@ -1610,7 +1646,7 @@ async function renderStudentDash() {
     <div class="fee-card due">
       <div class="card-label">Current Year Due</div>
       <div class="card-amount"><span>₹</span>${fmt(currentDue)}</div>
-      <div class="card-note">${s.studyYear} fees</div>
+      <div class="card-note">${effectiveYearStr} fees</div>
     </div>`;
   if (currentYearNum >= 2) {
     feeCardsHTML += `
@@ -2080,8 +2116,11 @@ async function renderAdminDash() {
     const _cd = settings.acadCutoffDay   !== undefined ? settings.acadCutoffDay   : 30;
     if (document.getElementById("viewAcadDate"))
       document.getElementById("viewAcadDate").textContent = _cd + " " + _monthNames[_cm] + " every year";
-    if (document.getElementById("acadCutoffMonth")) document.getElementById("acadCutoffMonth").value = _cm;
-    if (document.getElementById("acadCutoffDay"))   document.getElementById("acadCutoffDay").value   = _cd;
+    // Set select values — use setAttribute to ensure correct option is selected
+    const _dayEl = document.getElementById("acadCutoffDay");
+    const _monEl = document.getElementById("acadCutoffMonth");
+    if (_dayEl) _dayEl.value = String(_cd);
+    if (_monEl) _monEl.value = String(_cm);
     // Populate edit fields too
     if (document.getElementById("adminUpiId"))    document.getElementById("adminUpiId").value    = settings.upiId||"";
     if (document.getElementById("adminAccNo"))    document.getElementById("adminAccNo").value    = settings.accNo||"";
