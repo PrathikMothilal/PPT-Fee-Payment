@@ -655,10 +655,10 @@ textarea.form-control{resize:vertical;min-height:80px}
           <div class="form-group" style="margin:0">
             <label>Payment For</label>
             <select id="sPayFor" class="form-control" onchange="updateAmountHint();clearPayAmt()">
-              <option value="current">Current Year Fees</option>
-              <option value="arrear">Arrear / Previous Dues</option>
-              <option value="exam">Examination Fees</option>
-              <option value="misc">Miscellaneous</option>
+              <option value="Current Year Fees">Current Year Fees</option>
+              <option value="Arrear / Previous Dues">Arrear / Previous Dues</option>
+              <option value="Examination Fees">Examination Fees</option>
+              <option value="Miscellaneous">Miscellaneous</option>
             </select>
           </div>
         </div>
@@ -860,6 +860,10 @@ textarea.form-control{resize:vertical;min-height:80px}
             <div class="setting-row">
               <span class="setting-label">Email Notifications</span>
               <span class="setting-val"><span class="badge badge-green">✅ Active</span></span>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Academic Year Starts</span>
+              <span class="setting-val" id="viewAcadDate">30 June every year</span>
             </div>
             <div class="setting-row">
               <span class="setting-label">Fast2SMS API Key</span>
@@ -1080,6 +1084,53 @@ const DB = {
 const ADMIN_EMAIL = "pallavanppt86@gmail.com";
 const ADMIN_PWD   = "PPT@1986";
 let currentUser = null;
+
+// ══════════════════════════════════════════════════════════
+//  YEAR AUTO-INCREMENT LOGIC
+//  Every June 30th the student's year increments automatically.
+//  admYear is the year they joined (e.g. 2024 = joined 2024, 1st year).
+//  On June 30, 2025 → 2nd Year. On June 30, 2026 → 3rd Year.
+// ══════════════════════════════════════════════════════════
+// Global academic year cutoff — loaded from settings, defaults to June 30
+// Format: { month: 5, day: 30 } (month is 0-indexed: 5 = June)
+window._acadCutoff = { month: 5, day: 30 };
+
+function computeCurrentYear(stu) {
+  const admYear = parseInt(stu.admYear) || 2024;
+  const now     = new Date();
+  const cm      = window._acadCutoff.month;
+  const cd      = window._acadCutoff.day;
+  const cutoff  = new Date(now.getFullYear(), cm, cd);
+  // How many cutoff dates have passed since admission year?
+  let yearsElapsed = now.getFullYear() - admYear;
+  if (now < cutoff) yearsElapsed--; // haven't crossed this year's cutoff yet
+  yearsElapsed = Math.max(0, yearsElapsed);
+  return Math.min(3, yearsElapsed + 1); // 1, 2, or 3
+}
+
+// Returns correct studyYear string based on admission year + auto-increment
+function getAutoStudyYear(stu) {
+  const n = computeCurrentYear(stu);
+  return ["1st Year","2nd Year","3rd Year"][n-1];
+}
+
+// Compute ONLY the fees relevant to a student's current year
+// past years (unpaid) = arrear, current year = current due, future years = hidden
+function computeStudentDues(stu) {
+  const yn = computeCurrentYear(stu);
+  const f  = stu.fees || { year1:{due:0,paid:0}, year2:{due:0,paid:0}, year3:{due:0,paid:0} };
+  const years = ["year1","year2","year3"];
+  let currentDue = 0, arrearDue = 0, totalPaid = 0;
+  for (let i = 0; i < yn; i++) {
+    const y   = years[i];
+    const due = Math.max(0, (f[y]?.due||0) - (f[y]?.paid||0));
+    totalPaid += (f[y]?.paid||0);
+    if (i === yn - 1) currentDue = due;  // current year
+    else              arrearDue += due;  // past unpaid = arrear
+  }
+  const totalOutstanding = currentDue + arrearDue;
+  return { yn, currentDue, arrearDue, totalOutstanding, totalPaid, fees: f };
+}
 
 // ── EmailJS credentials (hardcoded — no admin setup needed) ──
 const EJS = {
@@ -1315,6 +1366,11 @@ async function doLogin() {
     currentUser = stu;
     saveSession(currentUser);
     updateHeader();
+    try {
+      const _ss = await DB.getSettings();
+      if (_ss.acadCutoffMonth !== undefined)
+        window._acadCutoff = { month: _ss.acadCutoffMonth, day: _ss.acadCutoffDay||30 };
+    } catch(e) {}
     await renderStudentDash();
     showPage("pagStudent");
   } catch(e) {
@@ -1476,12 +1532,42 @@ async function doRegister() {
 // ═══════════════════════════════════
 //  STUDENT DASHBOARD
 // ═══════════════════════════════════
+async function checkAndIncrementYear(stu) {
+  // Called on every dashboard load — checks if year should be incremented
+  const autoYear = getAutoStudyYear(stu);
+  if (stu.studyYear === autoYear) return stu; // no change needed
+
+  // Year has changed — update in Firestore
+  console.log(`Auto-incrementing ${stu.appId} from ${stu.studyYear} to ${autoYear}`);
+  const yn = computeCurrentYear(stu);
+  stu.studyYear = autoYear;
+
+  // Activate the new year's fees (copy from default settings if not yet set)
+  try {
+    const settings = await DB.getSettings();
+    const feeMap = { 1: settings.defFee1||0, 2: settings.defFee2||0, 3: settings.defFee3||0 };
+    const yKey = ["year1","year2","year3"][yn-1];
+    if (!stu.fees) stu.fees = { year1:{due:0,paid:0}, year2:{due:0,paid:0}, year3:{due:0,paid:0} };
+    // Only set if not already customised (don't overwrite manually-set fees)
+    if ((stu.fees[yKey]?.due||0) === 0) {
+      stu.fees[yKey].due = Math.max(0, feeMap[yn]);
+    }
+    await DB.setStudent(stu);
+    console.log(`✅ Year incremented and fees activated for ${stu.appId}`);
+  } catch(e) {
+    console.warn("Year increment save failed:", e.message);
+  }
+  return stu;
+}
+
 async function renderStudentDash() {
   // Always fetch live data from Firestore server so admin fee updates show instantly
   try {
     const fresh = await DB.getStudent(currentUser.appId, true); // forceServer=true
     if (fresh) {
-      currentUser = fresh;
+      // Auto-increment year if June 30 has passed
+      const updated = await checkAndIncrementYear(fresh);
+      currentUser = updated;
       saveSession(currentUser, true); // touch session to keep it alive
     }
   } catch(e) { /* use cached if offline */ }
@@ -1627,9 +1713,9 @@ function getMaxDue() {
   const yearMap = {"1st Year":1,"2nd Year":2,"3rd Year":3};
   const yn   = yearMap[s.studyYear] || 1;
   const yKey = ["year1","year2","year3"][yn-1];
-  if (forVal === "current") {
+  if (forVal === "Current Year Fees") {
     return Math.max(0,(f[yKey]?.due||0)-(f[yKey]?.paid||0));
-  } else if (forVal === "arrear") {
+  } else if (forVal === "Arrear / Previous Dues") {
     let a = 0;
     if (yn >= 2) a += Math.max(0,(f.year1.due||0)-(f.year1.paid||0));
     if (yn >= 3) a += Math.max(0,(f.year2.due||0)-(f.year2.paid||0));
@@ -1679,14 +1765,14 @@ function updateAmountHint() {
 
   let maxAmt = null, hintMsg = "", hintType = "info";
 
-  if (forVal === "current") {
+  if (forVal === "Current Year Fees") {
     const due = Math.max(0,(f[yKey]?.due||0)-(f[yKey]?.paid||0));
     maxAmt   = due;
     hintMsg  = due > 0
       ? `<span>📌</span><span>Maximum payable for <strong>${s.studyYear}</strong>: <strong style="font-size:1rem">₹${fmt(due)}</strong></span>`
       : `<span>✅</span><span>Your ${s.studyYear} fees are fully cleared!</span>`;
     hintType = due > 0 ? "warning" : "success";
-  } else if (forVal === "arrear") {
+  } else if (forVal === "Arrear / Previous Dues") {
     let arrear = 0;
     if (yn >= 2) arrear += Math.max(0,(f.year1.due||0)-(f.year1.paid||0));
     if (yn >= 3) arrear += Math.max(0,(f.year2.due||0)-(f.year2.paid||0));
@@ -1695,10 +1781,10 @@ function updateAmountHint() {
       ? `<span>📌</span><span>Total arrear dues: <strong style="font-size:1rem">₹${fmt(arrear)}</strong></span>`
       : `<span>✅</span><span>No arrear dues pending!</span>`;
     hintType = arrear > 0 ? "warning" : "success";
-  } else if (forVal === "exam") {
+  } else if (forVal === "Examination Fees") {
     hintMsg = `<span>ℹ️</span><span>Enter the examination fee amount as communicated by the college.</span>`;
     hintType = "info";
-  } else if (forVal === "misc") {
+  } else if (forVal === "Miscellaneous") {
     hintMsg = `<span>ℹ️</span><span>Enter the miscellaneous fee amount as communicated by the college.</span>`;
     hintType = "info";
   }
@@ -1781,7 +1867,7 @@ async function validatePayAmount(amt, forVal) {
   const yn   = yearMap[s.studyYear] || 1;
   const yKey = ["year1","year2","year3"][yn-1];
 
-  if (forVal === "current") {
+  if (forVal === "Current Year Fees") {
     const due = Math.max(0,(f[yKey]?.due||0)-(f[yKey]?.paid||0));
     if (due === 0) {
       showAlert("sPayAlert","warning","Your current year fees are already cleared. Nothing to pay.");
@@ -1791,7 +1877,7 @@ async function validatePayAmount(amt, forVal) {
       showAlert("sPayAlert","danger",`Amount cannot exceed your current year due of <strong>₹${fmt(due)}</strong>.`);
       return false;
     }
-  } else if (forVal === "arrear") {
+  } else if (forVal === "Arrear / Previous Dues") {
     let arrear = 0;
     if (yn >= 2) arrear += Math.max(0,(f.year1.due||0)-(f.year1.paid||0));
     if (yn >= 3) arrear += Math.max(0,(f.year2.due||0)-(f.year2.paid||0));
@@ -1985,6 +2071,17 @@ async function renderAdminDash() {
     document.getElementById("viewFee1").textContent   = "₹" + fmt(settings.defFee1||0);
     document.getElementById("viewFee2").textContent   = "₹" + fmt(settings.defFee2||0);
     document.getElementById("viewFee3").textContent   = "₹" + fmt(settings.defFee3||0);
+    // Load academic year cutoff globally
+    if (settings.acadCutoffMonth !== undefined) {
+      window._acadCutoff = { month: settings.acadCutoffMonth, day: settings.acadCutoffDay||30 };
+    }
+    const _monthNames=["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const _cm = settings.acadCutoffMonth !== undefined ? settings.acadCutoffMonth : 5;
+    const _cd = settings.acadCutoffDay   !== undefined ? settings.acadCutoffDay   : 30;
+    if (document.getElementById("viewAcadDate"))
+      document.getElementById("viewAcadDate").textContent = _cd + " " + _monthNames[_cm] + " every year";
+    if (document.getElementById("acadCutoffMonth")) document.getElementById("acadCutoffMonth").value = _cm;
+    if (document.getElementById("acadCutoffDay"))   document.getElementById("acadCutoffDay").value   = _cd;
     // Populate edit fields too
     if (document.getElementById("adminUpiId"))    document.getElementById("adminUpiId").value    = settings.upiId||"";
     if (document.getElementById("adminAccNo"))    document.getElementById("adminAccNo").value    = settings.accNo||"";
@@ -2041,19 +2138,22 @@ function renderStudentTable(cachedStudents) {
       return;
     }
     tbody.innerHTML = filtered.map(s=>{
-      const f=s.fees||{};
-      const tot = ["year1","year2","year3"].reduce((a,y)=>a+(f[y]?.due||0),0);
-      const paid= ["year1","year2","year3"].reduce((a,y)=>a+(f[y]?.paid||0),0);
-      const out = Math.max(0,tot-paid);
+      // Auto-update studyYear based on admYear + June 30 rule
+      const autoYear = getAutoStudyYear(s);
+      if (s.studyYear !== autoYear) {
+        // Silently update in memory for display — actual DB update happens in checkAndIncrementYear
+        s.studyYear = autoYear;
+      }
+      const { totalOutstanding } = computeStudentDues(s);
       const hasPend = (s.payments||[]).some(p=>p.status==="Pending Verification");
       return `<tr>
         <td class="muted">${escHtml(s.appId)}</td>
         <td style="font-weight:500">${escHtml(s.name)}</td>
         <td class="muted" style="font-size:0.8rem">${escHtml((s.course||"").replace("Diploma in ",""))}</td>
-        <td>${escHtml(s.studyYear||"")}</td>
+        <td>${escHtml(autoYear)}</td>
         <td class="muted">${escHtml(s.mobile||"")}</td>
-        <td><strong>₹${fmt(out)}</strong></td>
-        <td>${out===0?'<span class="badge badge-green">Cleared</span>':hasPend?'<span class="badge badge-gold">Pay. Pending</span>':'<span class="badge badge-red">Due</span>'}</td>
+        <td><strong>₹${fmt(totalOutstanding)}</strong></td>
+        <td>${totalOutstanding===0?'<span class="badge badge-green">Cleared</span>':hasPend?'<span class="badge badge-gold">Pay. Pending</span>':'<span class="badge badge-red">Due</span>'}</td>
         <td><button class="btn btn-primary btn-sm" onclick="openStudentModal('${escAttr(s.appId)}')">View / Edit</button></td>
       </tr>`;
     }).join("");
@@ -2094,11 +2194,17 @@ async function savePaymentSettings() {
   s.upiId    = document.getElementById("adminUpiId").value.trim();
   s.accNo    = document.getElementById("adminAccNo").value.trim();
   s.smsKey   = document.getElementById("adminSmsKey")?.value?.trim() || s.smsKey || "";
+  const _cmo = parseInt(document.getElementById("acadCutoffMonth")?.value);
+  const _cdo = parseInt(document.getElementById("acadCutoffDay")?.value);
+  if (!isNaN(_cmo)) { s.acadCutoffMonth=_cmo; s.acadCutoffDay=_cdo||30; window._acadCutoff={month:_cmo,day:_cdo||30}; }
   setLoading(true,"Saving…");
   await DB.setSettings(s);
   setLoading(false);
   document.getElementById("viewUpiId").innerHTML    = s.upiId    ? escHtml(s.upiId)    : '<em class="text-muted">Not set</em>';
   document.getElementById("viewAccNo").innerHTML    = s.accNo    ? escHtml(s.accNo)    : '<em class="text-muted">Not set</em>';
+  const _mno2=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const _acm=s.acadCutoffMonth!==undefined?s.acadCutoffMonth:5, _acd=s.acadCutoffDay||30;
+  if(document.getElementById("viewAcadDate")) document.getElementById("viewAcadDate").textContent=_acd+" "+_mno2[_acm]+" every year";
   document.getElementById("viewEmailSvc").innerHTML = s.emailSvc ? escHtml(s.emailSvc) : '<em class="text-muted">Not set</em>';
   document.getElementById("viewEmailTpl").innerHTML = s.emailTpl ? escHtml(s.emailTpl) : '<em class="text-muted">Not set</em>';
   document.getElementById("viewEmailKey").innerHTML = s.emailKey ? '••••••••••••'      : '<em class="text-muted">Not set</em>';
@@ -2196,15 +2302,8 @@ async function rejectPayment(appId, payIdx) {
 // ═══════════════════════════════════
 
 function calcBalance(stu) {
-  const yn = {"1st Year":1,"2nd Year":2,"3rd Year":3}[stu.studyYear]||1;
-  let due=0, paid=0;
-  ["year1","year2","year3"].forEach((y,i)=>{
-    if (i < yn) {
-      due  += stu.fees?.[y]?.due  || 0;
-      paid += stu.fees?.[y]?.paid || 0;
-    }
-  });
-  return Math.max(0, due - paid);
+  // Use the same year-aware logic everywhere
+  return computeStudentDues(stu).totalOutstanding;
 }
 
 // EMAIL 1 — Admin notification when student submits payment
@@ -2414,8 +2513,10 @@ function generateReceipt(stu, payment) {
   doc.text("DETAILS", 100, tableY+6);
   doc.text("AMOUNT", 175, tableY+6, {align:"right"});
 
+  const _fMap={"current":"Current Year Fees","arrear":"Arrear / Previous Dues","exam":"Examination Fees","misc":"Miscellaneous"};
+  const _fLabel = _fMap[payment.forLabel] || payment.forLabel || "Fee Payment";
   const rows = [
-    ["Payment For",         payment.forLabel,                                  ""],
+    ["Payment For",         _fLabel,                                            ""],
     ["Amount Paid",         "",                                                 `Rs. ${fmt(payment.amount)}`],
     ["Payment Method",      "UPI Transfer",                                    ""],
     ["Payment Status",      "CONFIRMED",                                       ""],
@@ -2449,29 +2550,36 @@ function generateReceipt(stu, payment) {
     rowY += 9;
   });
 
-  // Fee summary box
+  // Fee summary box — drawn dynamically based on year count below
   const sumY = rowY + 8;
+
+  // Only show years the student has REACHED — no future year fees in receipt
+  const { yn: stuYn, totalOutstanding: balance, fees: f } = computeStudentDues(stu);
+  const yearLabels = ["1st Year Fee:", "2nd Year Fee:", "3rd Year Fee:"];
+  const yearKeys   = ["year1", "year2", "year3"];
+  const summaryItems = [];
+  for (let i = 0; i < stuYn; i++) {
+    const yk = yearKeys[i];
+    summaryItems.push([
+      yearLabels[i],
+      `Rs.${fmt(f[yk]?.due||0)}`,
+      "Paid:",
+      `Rs.${fmt(f[yk]?.paid||0)}`
+    ]);
+  }
+
+  // Resize summary box height based on number of rows shown
+  const summaryBoxH = 14 + summaryItems.length * 7;
   doc.setFillColor(240, 235, 255);
-  doc.roundedRect(12, sumY, W-24, 36, 3, 3, "F");
+  doc.roundedRect(12, sumY, W-24, summaryBoxH, 3, 3, "F");
   doc.setDrawColor(...royal);
   doc.setLineWidth(0.4);
-  doc.roundedRect(12, sumY, W-24, 36, 3, 3, "S");
+  doc.roundedRect(12, sumY, W-24, summaryBoxH, 3, 3, "S");
 
   doc.setFont("helvetica","bold");
   doc.setFontSize(8);
   doc.setTextColor(...royal);
   doc.text("FEE SUMMARY", 18, sumY+8);
-
-  const f = stu.fees || {};
-  const totalDue  = (f.year1?.due||0)+(f.year2?.due||0)+(f.year3?.due||0);
-  const totalPaid = (f.year1?.paid||0)+(f.year2?.paid||0)+(f.year3?.paid||0);
-  const balance   = Math.max(0, totalDue - totalPaid);
-
-  const summaryItems = [
-    ["1st Year Fee:",  `Rs.${fmt(f.year1?.due||0)}`,  "Paid:",  `Rs.${fmt(f.year1?.paid||0)}`],
-    ["2nd Year Fee:",  `Rs.${fmt(f.year2?.due||0)}`,  "Paid:",  `Rs.${fmt(f.year2?.paid||0)}`],
-    ["3rd Year Fee:",  `Rs.${fmt(f.year3?.due||0)}`,  "Paid:",  `Rs.${fmt(f.year3?.paid||0)}`],
-  ];
 
   let si = sumY + 15;
   summaryItems.forEach(row => {
@@ -2486,13 +2594,15 @@ function generateReceipt(stu, payment) {
     si += 7;
   });
 
-  // Total outstanding
+  // Total outstanding — only relevant years
   doc.setFillColor(...royal);
   doc.roundedRect(130, sumY+6, 68, 24, 3, 3, "F");
   doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.setTextColor(201,168,76);
-  doc.text("TOTAL OUTSTANDING", 164, sumY+14, {align:"center"});
-  doc.setFontSize(18); doc.setTextColor(255,255,255);
-  doc.text(`Rs.${fmt(balance)}`, 164, sumY+26, {align:"center"});
+  doc.text("BALANCE DUE", 164, sumY+12, {align:"center"});
+  doc.setFontSize(7); doc.setTextColor(200,200,220);
+  doc.text("(current + arrears only)", 164, sumY+18, {align:"center"});
+  doc.setFontSize(16); doc.setTextColor(255,255,255);
+  doc.text(`Rs.${fmt(balance)}`, 164, sumY+27, {align:"center"});
 
   // Watermark-style PAID stamp if balance is 0
   if (balance === 0) {
