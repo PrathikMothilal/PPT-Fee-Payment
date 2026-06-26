@@ -1337,31 +1337,65 @@ function doLogout() {
 // ═══════════════════════════════════
 async function doRegister() {
   clearAlert("registerAlert");
+    // Assemble DOB from 3 dropdowns before reading value
+  assembleDob();
   const f = {
-    appId:        v("rAppId"),
-    admYear:      v("rYear"),
-    studyYear:    v("rStudyYear"),
-    course:       v("rCourse"),
-    name:         v("rName"),
-    dob:          (()=>{ assembleDob(); return document.getElementById("rDob")?.value||""; })(),
-    gender:       v("rGender"),
-    community:    v("rCommunity"),
-    aadhar:       v("rAadhar"),
-    address:      v("rAddress"),
-    mobile:       v("rMobile"),
-    email:        v("rEmail"),
-    fatherName:   v("rFatherName"),
-    fatherMobile: v("rFatherMobile"),
-    motherName:   v("rMotherName"),
-    motherMobile: v("rMotherMobile"),
+    appId:         v("rAppId"),
+    admYear:       v("rYear"),
+    studyYear:     v("rStudyYear"),
+    course:        v("rCourse"),
+    name:          v("rName"),
+    dob:           document.getElementById("rDob")?.value || "",
+    gender:        v("rGender"),
+    community:     v("rCommunity"),
+    aadhar:        v("rAadhar"),
+    address:       v("rAddress"),
+    mobile:        v("rMobile"),
+    email:         v("rEmail"),
+    fatherName:    v("rFatherName"),
+    fatherMobile:  v("rFatherMobile"),
+    motherName:    v("rMotherName"),
+    motherMobile:  v("rMotherMobile"),
     password:      v("rPwd"),
     schoolName:    v("rSchoolName"),
     schoolAddress: v("rSchoolAddress"),
+    schoolDistrict:v("rSchoolDistrict"),
+    schoolPincode: v("rSchoolPincode"),
+    schoolState:   document.getElementById("rSchoolState")?.value || "Tamil Nadu",
   };
   const pwd2 = v("rPwd2");
-  const req = ["appId","admYear","studyYear","course","name","dob","gender","community","aadhar","address","mobile","fatherName","fatherMobile","motherName","motherMobile","password","schoolName","schoolAddress","schoolDistrict","schoolPincode"];
-  for (const k of req) {
-    if (!f[k]) { showAlert("registerAlert","danger","Please fill in all required fields."); return; }
+  // Check each required field with a specific message
+  const requiredFields = [
+    { key:"appId",         label:"Application ID" },
+    { key:"admYear",       label:"Admission Year" },
+    { key:"studyYear",     label:"Current Year of Study" },
+    { key:"course",        label:"Programme / Course" },
+    { key:"name",          label:"Full Name" },
+    { key:"dob",           label:"Date of Birth" },
+    { key:"gender",        label:"Gender" },
+    { key:"community",     label:"Community" },
+    { key:"aadhar",        label:"Aadhar Number" },
+    { key:"address",       label:"Residential Address" },
+    { key:"mobile",        label:"Mobile Number" },
+    { key:"fatherName",    label:"Father's Name" },
+    { key:"fatherMobile",  label:"Father's Mobile" },
+    { key:"motherName",    label:"Mother's Name" },
+    { key:"motherMobile",  label:"Mother's Mobile" },
+    { key:"password",      label:"Password" },
+    { key:"schoolName",    label:"School Name" },
+    { key:"schoolAddress", label:"School Address" },
+    { key:"schoolDistrict",label:"School District" },
+    { key:"schoolPincode", label:"School Pincode" },
+  ];
+  for (const field of requiredFields) {
+    if (!f[field.key]) {
+      showAlert("registerAlert","danger",`Please fill in <strong>${field.label}</strong>.`);
+      // Scroll to the field
+      const el = document.getElementById("r" + field.key.charAt(0).toUpperCase() + field.key.slice(1))
+               || document.getElementById("r" + field.key);
+      if (el) { el.scrollIntoView({ behavior:"smooth", block:"center" }); el.focus(); }
+      return;
+    }
   }
   // Mobile validation
   if (!/^\d{10}$/.test(f.mobile)) {
@@ -1387,15 +1421,20 @@ async function doRegister() {
     setFieldError("err-rSchoolPincode","Must be exactly 6 digits"); return;
   }
   // Age validation — minimum 14 years
-  if (f.dob) {
-    const dob = new Date(f.dob);
-    const today = new Date();
-    const age = today.getFullYear() - dob.getFullYear()
-      - (today < new Date(today.getFullYear(), dob.getMonth(), dob.getDate()) ? 1 : 0);
-    if (age < 14) {
-      showAlert("registerAlert","danger","Student must be at least 14 years old to register.");
-      setFieldError("err-rDob","Minimum age is 14 years"); return;
-    }
+  if (!f.dob) {
+    showAlert("registerAlert","danger","Please select the <strong>Date of Birth</strong> (Day, Month and Year).");
+    document.getElementById("rDobDay")?.scrollIntoView({ behavior:"smooth", block:"center" });
+    setFieldError("err-rDob","Please select day, month and year"); return;
+  }
+  const _dob = new Date(f.dob);
+  const _today = new Date();
+  const _age = _today.getFullYear() - _dob.getFullYear()
+    - (_today < new Date(_today.getFullYear(), _dob.getMonth(), _dob.getDate()) ? 1 : 0);
+  if (_age < 14) {
+    showAlert("registerAlert","danger","Student must be at least 14 years old to register.");
+    setFieldError("err-rDob","Minimum age is 14 years");
+    document.getElementById("rDobDay")?.scrollIntoView({ behavior:"smooth", block:"center" });
+    return;
   }
   // Password validation
   if (f.password.length<6) {
