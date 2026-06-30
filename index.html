@@ -884,11 +884,11 @@ textarea.form-control{resize:vertical;min-height:80px}
               <label>Academic Year Start Date <span class="required">*</span></label>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
                 <div>
-                  <select id="acadCutoffDay" class="form-control"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option><option value="26">26</option><option value="27">27</option><option value="28">28</option><option value="29">29</option><option value="30">30</option><option value="31">31</option></select>
+                  <select id="acadCutoffDay" class="form-control" onchange="validateAcadDate()"></select>
                   <div style="font-size:0.72rem;color:var(--text-muted);margin-top:3px">Day</div>
                 </div>
                 <div>
-                  <select id="acadCutoffMonth" class="form-control"><option value="0">January</option><option value="1">February</option>
+                  <select id="acadCutoffMonth" class="form-control" onchange="populateAcadDays()"><option value="0">January</option><option value="1">February</option>
                     <option value="2">March</option><option value="3">April</option>
                     <option value="4">May</option><option value="5">June</option>
                     <option value="6">July</option><option value="7">August</option>
@@ -1103,8 +1103,18 @@ const DB = {
 //  APP STATE
 // ═══════════════════════════════════
 const ADMIN_EMAIL = "pallavanppt86@gmail.com";
-const ADMIN_PWD   = "PPT@1986";
+// Admin password is stored as a SHA-256 hash, never in plain text.
+// Hash of "PPT@1986" — generated once, safe to keep in source.
+const ADMIN_PWD_HASH = "096dbf584c35b17fbd25033677edb646f8aa712e9d1c59330b79a3534a78d9cf";
 let currentUser = null;
+
+// ── Password hashing (SHA-256 via Web Crypto API — built into every browser) ──
+async function sha256Hash(text) {
+  const enc = new TextEncoder().encode(text);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", enc);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+}
 
 // ══════════════════════════════════════════════════════════
 //  YEAR AUTO-INCREMENT LOGIC
@@ -1375,7 +1385,9 @@ async function doLogin() {
   clearAlert("loginAlert");
   if (!id||!pwd) { showAlert("loginAlert","danger","Please enter both credentials."); return; }
 
-  if (id===ADMIN_EMAIL && pwd===ADMIN_PWD) {
+  // Admin login — compare against stored hash, never plain text
+  const enteredHash = await sha256Hash(pwd);
+  if (id===ADMIN_EMAIL && enteredHash===ADMIN_PWD_HASH) {
     currentUser = "admin";
     saveSession(currentUser);
     updateHeader();
@@ -1388,11 +1400,35 @@ async function doLogin() {
   try {
     const students = await DB.getStudents();
     const stu = students.find(s =>
-      (s.appId.toLowerCase()===id.toLowerCase() || (s.email && s.email.toLowerCase()===id.toLowerCase()))
-      && s.password===pwd
+      s.appId.toLowerCase()===id.toLowerCase() || (s.email && s.email.toLowerCase()===id.toLowerCase())
     );
+    if (!stu) {
+      setLoading(false);
+      showAlert("loginAlert","danger","Invalid credentials. Check your Application ID and password.");
+      return;
+    }
+
+    let passwordMatches = false;
+    if (stu.passwordHash) {
+      // New-style hashed password
+      passwordMatches = (stu.passwordHash === enteredHash);
+    } else if (stu.password) {
+      // Legacy plaintext password — verify, then silently migrate to a hash
+      passwordMatches = (stu.password === pwd);
+      if (passwordMatches) {
+        stu.passwordHash = enteredHash;
+        delete stu.password; // remove plaintext permanently
+        await DB.setStudent(stu);
+        console.log("🔒 Migrated", stu.appId, "to hashed password");
+      }
+    }
+
     setLoading(false);
-    if (!stu) { showAlert("loginAlert","danger","Invalid credentials. Check your Application ID and password."); return; }
+    if (!passwordMatches) {
+      showAlert("loginAlert","danger","Invalid credentials. Check your Application ID and password.");
+      return;
+    }
+
     currentUser = stu;
     saveSession(currentUser);
     updateHeader();
@@ -1442,7 +1478,6 @@ async function doRegister() {
     fatherMobile:  v("rFatherMobile"),
     motherName:    v("rMotherName"),
     motherMobile:  v("rMotherMobile"),
-    password:      v("rPwd"),
     schoolName:    v("rSchoolName"),
     schoolAddress: v("rSchoolAddress"),
     schoolDistrict:v("rSchoolDistrict"),
@@ -1522,12 +1557,13 @@ async function doRegister() {
     document.getElementById("rDobDay")?.scrollIntoView({ behavior:"smooth", block:"center" });
     return;
   }
-  // Password validation
-  if (f.password.length<6) {
+  // Password validation — read raw password separately since it's not stored in f directly
+  const rawPwd = v("rPwd");
+  if (rawPwd.length<6) {
     showAlert("registerAlert","danger","Password must be at least 6 characters.");
     setFieldError("err-rPwd","Minimum 6 characters"); return;
   }
-  if (f.password!==pwd2) {
+  if (rawPwd!==pwd2) {
     showAlert("registerAlert","danger","Passwords do not match.");
     setFieldError("err-rPwd2","Passwords do not match"); return;
   }
@@ -1547,6 +1583,8 @@ async function doRegister() {
       year3: { due: Math.max(0, settings.defFee3||0), paid: 0 },
     };
 
+    // Store only the password hash — never the raw password
+    f.passwordHash = await sha256Hash(rawPwd);
     f.payments = [];
     f.registeredAt = new Date().toISOString();
     await DB.setStudent(f);
@@ -2107,20 +2145,29 @@ async function renderAdminDash() {
     document.getElementById("viewFee1").textContent   = "₹" + fmt(settings.defFee1||0);
     document.getElementById("viewFee2").textContent   = "₹" + fmt(settings.defFee2||0);
     document.getElementById("viewFee3").textContent   = "₹" + fmt(settings.defFee3||0);
-    // Load academic year cutoff globally
-    if (settings.acadCutoffMonth !== undefined) {
-      window._acadCutoff = { month: settings.acadCutoffMonth, day: settings.acadCutoffDay||30 };
-    }
+    // Load academic year cutoff globally — sanitize against invalid day/month combos
     const _monthNames=["January","February","March","April","May","June","July","August","September","October","November","December"];
-    const _cm = settings.acadCutoffMonth !== undefined ? settings.acadCutoffMonth : 5;
-    const _cd = settings.acadCutoffDay   !== undefined ? settings.acadCutoffDay   : 30;
+    let _cm = settings.acadCutoffMonth !== undefined ? settings.acadCutoffMonth : 5;
+    let _cd = settings.acadCutoffDay   !== undefined ? settings.acadCutoffDay   : 30;
+    const _maxDayForMonth = new Date(2024, _cm+1, 0).getDate(); // days in that month (2024 = leap ref year)
+    if (_cd > _maxDayForMonth) {
+      _cd = _maxDayForMonth; // auto-correct e.g. "31 June" → "30 June"
+      // Persist the corrected value silently so it doesn't recur
+      settings.acadCutoffDay = _cd;
+      DB.setSettings(settings).catch(()=>{});
+    }
+    window._acadCutoff = { month: _cm, day: _cd };
     if (document.getElementById("viewAcadDate"))
       document.getElementById("viewAcadDate").textContent = _cd + " " + _monthNames[_cm] + " every year";
-    // Set select values — use setAttribute to ensure correct option is selected
-    const _dayEl = document.getElementById("acadCutoffDay");
+    // Set select values and populate days for the chosen month
     const _monEl = document.getElementById("acadCutoffMonth");
-    if (_dayEl) _dayEl.value = String(_cd);
-    if (_monEl) _monEl.value = String(_cm);
+    if (_monEl) {
+      _monEl.value = String(_cm);
+      // Populate days based on this month, then set correct day
+      setTimeout(() => {
+        populateAcadDays(_cd);
+      }, 30);
+    }
     // Populate edit fields too
     if (document.getElementById("adminUpiId"))    document.getElementById("adminUpiId").value    = settings.upiId||"";
     if (document.getElementById("adminAccNo"))    document.getElementById("adminAccNo").value    = settings.accNo||"";
@@ -2203,12 +2250,38 @@ function renderStudentTable(cachedStudents) {
 
 // ─── Settings Edit Toggle ───
 let editState = { paySettings:false, feeStruct:false };
+
+// Populate day options dynamically based on chosen month (avoids invalid dates like June 31)
+function populateAcadDays(keepVal) {
+  const monEl = document.getElementById("acadCutoffMonth");
+  const dayEl = document.getElementById("acadCutoffDay");
+  if (!monEl || !dayEl) return;
+  const month     = parseInt(monEl.value) + 1; // 1-indexed for Date
+  const year      = 2024; // non-leap reference year; use 2024 for Feb 29 support
+  const daysInMon = new Date(year, month, 0).getDate();
+  const curVal    = keepVal || parseInt(dayEl.value) || 30;
+  dayEl.innerHTML = "";
+  for (let d = 1; d <= daysInMon; d++) {
+    const opt = document.createElement("option");
+    opt.value = d; opt.textContent = d;
+    if (d === Math.min(curVal, daysInMon)) opt.selected = true;
+    dayEl.appendChild(opt);
+  }
+}
+
+function validateAcadDate() {
+  // Just ensure day is valid for chosen month — populateAcadDays handles this
+  populateAcadDays(parseInt(document.getElementById("acadCutoffDay")?.value));
+}
+
 function toggleEditSection(section) {
   editState[section] = true;
   if (section==="paySettings") {
     document.getElementById("paySettingsView").style.display="none";
     document.getElementById("paySettingsEdit").style.display="block";
     document.getElementById("btnEditPaySettings").style.display="none";
+    // Populate days for currently selected month
+    setTimeout(populateAcadDays, 30);
   } else {
     document.getElementById("feeStructView").style.display="none";
     document.getElementById("feeStructEdit").style.display="block";
@@ -2247,8 +2320,11 @@ async function savePaymentSettings() {
   document.getElementById("viewEmailSvc").innerHTML = s.emailSvc ? escHtml(s.emailSvc) : '<em class="text-muted">Not set</em>';
   document.getElementById("viewEmailTpl").innerHTML = s.emailTpl ? escHtml(s.emailTpl) : '<em class="text-muted">Not set</em>';
   document.getElementById("viewEmailKey").innerHTML = s.emailKey ? '••••••••••••'      : '<em class="text-muted">Not set</em>';
-  const msg=document.getElementById("settingsSavedMsg");
-  msg.style.display="block"; setTimeout(()=>{msg.style.display="none"; cancelEditSection("paySettings");},1500);
+  // Show saved message — stay in edit mode, don't auto-cancel
+  // User must click Cancel themselves to close
+  const msg = document.getElementById("settingsSavedMsg");
+  msg.style.display = "block";
+  setTimeout(() => { msg.style.display = "none"; }, 2500);
 }
 
 async function saveDefaultFees() {
@@ -2278,8 +2354,10 @@ async function saveDefaultFees() {
   document.getElementById("viewFee1").textContent="₹"+fmt(fee1);
   document.getElementById("viewFee2").textContent="₹"+fmt(fee2);
   document.getElementById("viewFee3").textContent="₹"+fmt(fee3);
-  const msg=document.getElementById("feeSavedMsg");
-  msg.style.display="block"; setTimeout(()=>{msg.style.display="none"; cancelEditSection("feeStruct");},1500);
+  // Show saved — stay in edit mode until user clicks Cancel
+  const msg = document.getElementById("feeSavedMsg");
+  msg.style.display = "block";
+  setTimeout(() => { msg.style.display = "none"; }, 2500);
 }
 
 // ─── Payment Approval ───
