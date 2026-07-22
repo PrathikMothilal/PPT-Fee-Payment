@@ -306,6 +306,43 @@ textarea.form-control{resize:vertical;min-height:80px}
 /* Net banking tab */
 .tab-active-upi{background:var(--royal)!important;color:#fff!important}
 .tab-inactive{background:#fafafa!important;color:var(--text-mid)!important}
+
+/* ADMIN DASHBOARD SECTION TABS */
+.admin-tab-nav{display:flex;gap:4px;margin-bottom:22px;border-bottom:2px solid var(--border);overflow-x:auto;-ms-overflow-style:none;scrollbar-width:none}
+.admin-tab-nav::-webkit-scrollbar{display:none}
+.admin-tab-btn{display:flex;align-items:center;gap:8px;padding:13px 20px;border:none;background:none;font-family:'DM Sans',sans-serif;font-size:0.87rem;font-weight:500;color:var(--text-muted);cursor:pointer;white-space:nowrap;border-bottom:3px solid transparent;margin-bottom:-2px;transition:color 0.2s,border-color 0.2s}
+.admin-tab-btn:hover{color:var(--royal)}
+.admin-tab-btn.active{color:var(--royal);border-bottom-color:var(--gold);font-weight:600}
+.admin-tab-btn .tab-mini-badge{background:var(--danger);color:#fff;border-radius:20px;padding:1px 8px;font-size:0.72rem;font-weight:600}
+.admin-tab-panel{display:none}
+.admin-tab-panel.active{display:block;animation:tabFadeIn 0.25s ease}
+@keyframes tabFadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* ANALYTICS TAB */
+.analytics-period-nav{display:flex;gap:8px;margin-bottom:22px;flex-wrap:wrap}
+.analytics-period-btn{padding:8px 18px;border-radius:20px;border:1.5px solid var(--border);background:#fafafa;color:var(--text-mid);font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:500;cursor:pointer;transition:all 0.2s}
+.analytics-period-btn:hover{border-color:var(--royal-light);color:var(--royal)}
+.analytics-period-btn.active{background:var(--royal);border-color:var(--royal);color:#fff}
+.analytics-grid{display:grid;grid-template-columns:1fr 280px;gap:28px;align-items:start}
+@media (max-width:760px){.analytics-grid{grid-template-columns:1fr}}
+.analytics-stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
+@media (max-width:560px){.analytics-stat-row{grid-template-columns:1fr}}
+.analytics-stat-box{background:var(--gold-pale);border:1px solid var(--border-gold);border-radius:12px;padding:16px 18px}
+.analytics-stat-box .num{font-family:'Cinzel',serif;font-size:1.5rem;color:var(--royal);font-weight:700;line-height:1.2}
+.analytics-stat-box .lbl{font-size:0.72rem;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.05em;margin-top:4px}
+.analytics-legend{display:flex;flex-direction:column;gap:11px}
+.analytics-legend-item{display:flex;align-items:center;gap:10px;font-size:0.85rem;color:var(--text-dark)}
+.analytics-legend-swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.analytics-legend-item .amt{margin-left:auto;font-weight:600;white-space:nowrap;padding-left:10px}
+.analytics-pie-card{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:22px;text-align:center;box-shadow:var(--shadow-card)}
+
+/* REGISTER FORM: Parent / Guardian mini-tabs */
+.reg-subtab-nav{display:flex;gap:0;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:18px}
+.reg-subtab-btn{flex:1;padding:10px;border:none;background:#fafafa;color:var(--text-mid);font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:500;cursor:pointer;transition:all 0.2s;border-left:1.5px solid var(--border)}
+.reg-subtab-btn:first-child{border-left:none}
+.reg-subtab-btn.active{background:var(--royal);color:#fff}
+.reg-subtab-panel{display:none}
+.reg-subtab-panel.active{display:block}
 </style>
 </head>
 <body>
@@ -407,12 +444,9 @@ textarea.form-control{resize:vertical;min-height:80px}
               <option>Diploma in Electrical &amp; Electronics Engg.</option>
               <option>Diploma in Electronics &amp; Comm. Engg.</option>
               <option>Diploma in Computer Engineering</option>
-              <option>Diploma in Information Technology</option>
-              <option>ITI – Fitter</option><option>ITI – Turner</option>
-              <option>ITI – Electrician</option><option>ITI – Welder</option>
-              <option>ITI – COPA</option><option>ITI – Machinist</option>
-              <option>ITI – Mechanic Motor Vehicle</option>
-              <option>ITI – Draughtsman Civil</option>
+              <option>Diploma in Automobile Engineering</option>
+              <option>ITI – Fitter</option>
+              <option>ITI – Electrician</option>
             </select>
             <div class="field-error" id="err-rCourse"></div>
           </div>
@@ -467,7 +501,7 @@ textarea.form-control{resize:vertical;min-height:80px}
             <label>Community <span class="required">*</span></label>
             <select id="rCommunity" class="form-control" onchange="validateSelect('rCommunity','Please select community')">
               <option value="">Select</option>
-              <option>OC</option><option>BC</option><option>MBC</option><option>SC</option><option>ST</option><option>SCA</option>
+              <option>OC</option><option>BC</option><option>MBC/DNC</option><option>SC</option><option>ST</option><option>SCA</option><option>SCC</option>
             </select>
             <div class="field-error" id="err-rCommunity"></div>
           </div>
@@ -530,42 +564,116 @@ textarea.form-control{resize:vertical;min-height:80px}
             <div class="field-error" id="err-rMobile"></div>
           </div>
           <div class="form-group">
-            <label>Email Address <span class="optional">(optional)</span></label>
+            <label>Email Address <span class="required">*</span></label>
             <input type="email" id="rEmail" class="form-control" placeholder="student@email.com"
-              onblur="validateEmail()">
+              onblur="validateField('rEmail','Email address is required');validateEmail()">
             <div class="field-error" id="err-rEmail"></div>
           </div>
         </div>
 
         <div class="section-divider">Parent / Guardian Details</div>
+
+        <!-- Parent / Guardian sub-tabs -->
+        <div class="reg-subtab-nav">
+          <button type="button" class="reg-subtab-btn active" id="regSubtabBtn-parent" onclick="switchRegSubtab('parent')">👨‍👩‍👦 Parent Details</button>
+          <button type="button" class="reg-subtab-btn" id="regSubtabBtn-guardian" onclick="switchRegSubtab('guardian')">🧑‍🤝‍🧑 Guardian Details</button>
+        </div>
+
+        <!-- Parent Details panel -->
+        <div class="reg-subtab-panel active" id="regSubtabPanel-parent">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>Father's Name <span class="required">*</span></label>
+              <input type="text" id="rFatherName" class="form-control" placeholder="FATHER'S FULL NAME"
+                oninput="this.value=this.value.toUpperCase()"
+                onblur="validateField('rFatherName','Father's name is required')">
+              <div class="field-error" id="err-rFatherName"></div>
+            </div>
+            <div class="form-group">
+              <label>Father's Mobile <span class="required">*</span></label>
+              <input type="tel" id="rFatherMobile" class="form-control" placeholder="10-digit number" maxlength="10"
+                oninput="this.value=this.value.replace(/\D/g,''); liveValidateMobile(this,'err-rFatherMobile')"
+                onblur="validateMobile('rFatherMobile','err-rFatherMobile')">
+              <div class="field-error" id="err-rFatherMobile"></div>
+            </div>
+            <div class="form-group">
+              <label>Mother's Name <span class="required">*</span></label>
+              <input type="text" id="rMotherName" class="form-control" placeholder="MOTHER'S FULL NAME"
+                oninput="this.value=this.value.toUpperCase()"
+                onblur="validateField('rMotherName','Mother's name is required')">
+              <div class="field-error" id="err-rMotherName"></div>
+            </div>
+            <div class="form-group">
+              <label>Mother's Mobile <span class="required">*</span></label>
+              <input type="tel" id="rMotherMobile" class="form-control" placeholder="10-digit number" maxlength="10"
+                oninput="this.value=this.value.replace(/\D/g,''); liveValidateMobile(this,'err-rMotherMobile')"
+                onblur="validateMobile('rMotherMobile','err-rMotherMobile')">
+              <div class="field-error" id="err-rMotherMobile"></div>
+            </div>
+            <div class="form-group">
+              <label>Father's Occupation <span class="required">*</span></label>
+              <input type="text" id="rFatherOccupation" class="form-control" placeholder="e.g. Farmer, Business, Employee"
+                onblur="validateField('rFatherOccupation','Father\'s occupation is required')">
+              <div class="field-error" id="err-rFatherOccupation"></div>
+            </div>
+            <div class="form-group">
+              <label>Mother's Occupation <span class="required">*</span></label>
+              <input type="text" id="rMotherOccupation" class="form-control" placeholder="e.g. Homemaker, Business, Employee"
+                onblur="validateField('rMotherOccupation','Mother\'s occupation is required')">
+              <div class="field-error" id="err-rMotherOccupation"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Guardian Details panel -->
+        <div class="reg-subtab-panel" id="regSubtabPanel-guardian">
+          <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:14px">
+            Fill this in only if a guardian (other than parents) is responsible for the student. <span class="optional">(optional)</span>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>Guardian's Name <span class="optional">(optional)</span></label>
+              <input type="text" id="rGuardianName" class="form-control" placeholder="GUARDIAN'S FULL NAME"
+                oninput="this.value=this.value.toUpperCase()">
+              <div class="field-error" id="err-rGuardianName"></div>
+            </div>
+            <div class="form-group">
+              <label>Relationship to Student <span class="optional">(optional)</span></label>
+              <input type="text" id="rGuardianRelation" class="form-control" placeholder="e.g. Uncle, Elder Brother">
+              <div class="field-error" id="err-rGuardianRelation"></div>
+            </div>
+            <div class="form-group">
+              <label>Guardian's Mobile <span class="optional">(optional)</span></label>
+              <input type="tel" id="rGuardianMobile" class="form-control" placeholder="10-digit number" maxlength="10"
+                oninput="this.value=this.value.replace(/\D/g,''); liveValidateMobile(this,'err-rGuardianMobile')">
+              <div class="field-error" id="err-rGuardianMobile"></div>
+            </div>
+            <div class="form-group">
+              <label>Guardian's Address <span class="optional">(optional)</span></label>
+              <input type="text" id="rGuardianAddress" class="form-control" placeholder="Door No., Street, Area">
+              <div class="field-error" id="err-rGuardianAddress"></div>
+            </div>
+            <div class="form-group">
+              <label>Guardian's Occupation <span class="optional">(optional)</span></label>
+              <input type="text" id="rGuardianOccupation" class="form-control" placeholder="e.g. Farmer, Business, Employee">
+              <div class="field-error" id="err-rGuardianOccupation"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-divider">Bank Details</div>
         <div class="form-grid-2">
           <div class="form-group">
-            <label>Father's Name <span class="required">*</span></label>
-            <input type="text" id="rFatherName" class="form-control" placeholder="FATHER'S FULL NAME"
-              oninput="this.value=this.value.toUpperCase()"
-              onblur="validateField('rFatherName','Father's name is required')">
-            <div class="field-error" id="err-rFatherName"></div>
+            <label>Account Number <span class="optional">(optional)</span></label>
+            <input type="text" id="rAccountNumber" class="form-control" placeholder="Bank account number"
+              oninput="this.value=this.value.replace(/\D/g,'')">
+            <div class="field-error" id="err-rAccountNumber"></div>
           </div>
           <div class="form-group">
-            <label>Father's Mobile <span class="required">*</span></label>
-            <input type="tel" id="rFatherMobile" class="form-control" placeholder="10-digit number" maxlength="10"
-              oninput="this.value=this.value.replace(/\D/g,''); liveValidateMobile(this,'err-rFatherMobile')"
-              onblur="validateMobile('rFatherMobile','err-rFatherMobile')">
-            <div class="field-error" id="err-rFatherMobile"></div>
-          </div>
-          <div class="form-group">
-            <label>Mother's Name <span class="required">*</span></label>
-            <input type="text" id="rMotherName" class="form-control" placeholder="MOTHER'S FULL NAME"
-              oninput="this.value=this.value.toUpperCase()"
-              onblur="validateField('rMotherName','Mother's name is required')">
-            <div class="field-error" id="err-rMotherName"></div>
-          </div>
-          <div class="form-group">
-            <label>Mother's Mobile <span class="required">*</span></label>
-            <input type="tel" id="rMotherMobile" class="form-control" placeholder="10-digit number" maxlength="10"
-              oninput="this.value=this.value.replace(/\D/g,''); liveValidateMobile(this,'err-rMotherMobile')"
-              onblur="validateMobile('rMotherMobile','err-rMotherMobile')">
-            <div class="field-error" id="err-rMotherMobile"></div>
+            <label>IFSC Code <span class="optional">(optional)</span></label>
+            <input type="text" id="rIfscCode" class="form-control" placeholder="e.g. SBIN0001234" maxlength="11"
+              oninput="this.value=this.value.toUpperCase()">
+            <div class="field-error" id="err-rIfscCode"></div>
           </div>
         </div>
 
@@ -792,7 +900,16 @@ textarea.form-control{resize:vertical;min-height:80px}
       </div>
     </div>
 
-    <!-- SECTION 1: Registered Students -->
+    <!-- Admin section tab navigation -->
+    <div class="admin-tab-nav">
+      <button class="admin-tab-btn active" id="adminTabBtn-students" onclick="switchAdminTab('students')">🎓 Registered Students</button>
+      <button class="admin-tab-btn" id="adminTabBtn-verify" onclick="switchAdminTab('verify')">🧾 Payment Verifications <span class="tab-mini-badge" id="pendingCountTabBadge">0</span></button>
+      <button class="admin-tab-btn" id="adminTabBtn-settings" onclick="switchAdminTab('settings')">⚙️ Payment Settings &amp; Fee Structure</button>
+      <button class="admin-tab-btn" id="adminTabBtn-analytics" onclick="switchAdminTab('analytics')">📊 Analytics</button>
+    </div>
+
+    <!-- TAB PANEL 1: Registered Students -->
+    <div class="admin-tab-panel active" id="adminTabPanel-students">
     <div class="section-card">
       <div class="card-head">
         <h3>Registered Students</h3>
@@ -820,8 +937,10 @@ textarea.form-control{resize:vertical;min-height:80px}
         </div>
       </div>
     </div>
+    </div>
 
-    <!-- SECTION 2: Payment Verifications -->
+    <!-- TAB PANEL 2: Payment Verifications -->
+    <div class="admin-tab-panel" id="adminTabPanel-verify">
     <div class="section-card">
       <div class="card-head">
         <h3>Pending Payment Verifications</h3>
@@ -831,8 +950,10 @@ textarea.form-control{resize:vertical;min-height:80px}
         <p class="text-muted">No pending verifications.</p>
       </div>
     </div>
+    </div>
 
-    <!-- SECTION 3: Settings + Fees side by side -->
+    <!-- TAB PANEL 3: Settings + Fees side by side -->
+    <div class="admin-tab-panel" id="adminTabPanel-settings">
     <div class="combined-section-card">
       <div class="combined-heads">
         <div>
@@ -953,6 +1074,47 @@ textarea.form-control{resize:vertical;min-height:80px}
         </div>
       </div>
     </div>
+    </div>
+
+    <!-- TAB PANEL 4: Analytics -->
+    <div class="admin-tab-panel" id="adminTabPanel-analytics">
+    <div class="section-card">
+      <div class="card-head">
+        <h3>Fee Collection Analytics</h3>
+      </div>
+      <div class="card-body">
+        <div class="analytics-period-nav">
+          <button class="analytics-period-btn active" id="analyticsPeriodBtn-day" onclick="switchAnalyticsPeriod('day')">📅 Today</button>
+          <button class="analytics-period-btn" id="analyticsPeriodBtn-week" onclick="switchAnalyticsPeriod('week')">🗓️ This Week</button>
+          <button class="analytics-period-btn" id="analyticsPeriodBtn-month" onclick="switchAnalyticsPeriod('month')">📆 This Month</button>
+          <button class="analytics-period-btn" id="analyticsPeriodBtn-year" onclick="switchAnalyticsPeriod('year')">📊 This Year</button>
+        </div>
+        <div class="analytics-grid">
+          <div>
+            <div class="analytics-stat-row">
+              <div class="analytics-stat-box">
+                <div class="num" id="analyticsTotalCollected">₹0</div>
+                <div class="lbl">Total Collected</div>
+              </div>
+              <div class="analytics-stat-box">
+                <div class="num" id="analyticsPaymentCount">0</div>
+                <div class="lbl">Payments Confirmed</div>
+              </div>
+              <div class="analytics-stat-box">
+                <div class="num" id="analyticsNewRegs">0</div>
+                <div class="lbl">New Registrations</div>
+              </div>
+            </div>
+            <div class="analytics-legend" id="analyticsLegend"></div>
+          </div>
+          <div class="analytics-pie-card">
+            <div id="analyticsPieWrap"></div>
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:10px">Confirmed fee collections by category</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
 
   </div>
 </div>
@@ -971,7 +1133,7 @@ textarea.form-control{resize:vertical;min-height:80px}
 
 <footer class="site-footer">
   © 2024 <span>Pallavan Polytechnic College</span> · Pallavan Educational Trust · Kolivakkam, Kanchipuram, Tamil Nadu<br>
-  AICTE Approved · College Code: 370 · Managed by Rtn. T G P Mothilal, M.E., B.L.
+  AICTE Approved · College Code: 370
 </footer>
 
 <script>
@@ -1478,6 +1640,15 @@ async function doRegister() {
     fatherMobile:  v("rFatherMobile"),
     motherName:    v("rMotherName"),
     motherMobile:  v("rMotherMobile"),
+    guardianName:     v("rGuardianName"),
+    guardianRelation: v("rGuardianRelation"),
+    guardianMobile:   v("rGuardianMobile"),
+    guardianAddress:  v("rGuardianAddress"),
+    fatherOccupation:   v("rFatherOccupation"),
+    motherOccupation:   v("rMotherOccupation"),
+    guardianOccupation: v("rGuardianOccupation"),
+    accountNumber: v("rAccountNumber"),
+    ifscCode:      v("rIfscCode"),
     schoolName:    v("rSchoolName"),
     schoolAddress: v("rSchoolAddress"),
     schoolDistrict:v("rSchoolDistrict"),
@@ -1498,19 +1669,24 @@ async function doRegister() {
     { key:"aadhar",        label:"Aadhar Number" },
     { key:"address",       label:"Residential Address" },
     { key:"mobile",        label:"Mobile Number" },
+    { key:"email",         label:"Email Address" },
     { key:"fatherName",    label:"Father's Name" },
     { key:"fatherMobile",  label:"Father's Mobile" },
     { key:"motherName",    label:"Mother's Name" },
     { key:"motherMobile",  label:"Mother's Mobile" },
+    { key:"fatherOccupation", label:"Father's Occupation" },
+    { key:"motherOccupation", label:"Mother's Occupation" },
     { key:"password",      label:"Password" },
     { key:"schoolName",    label:"School Name" },
     { key:"schoolAddress", label:"School Address" },
     { key:"schoolDistrict",label:"School District" },
     { key:"schoolPincode", label:"School Pincode" },
   ];
+  const parentTabFields = ["fatherName","fatherMobile","motherName","motherMobile","fatherOccupation","motherOccupation"];
   for (const field of requiredFields) {
     if (!f[field.key]) {
       showAlert("registerAlert","danger",`Please fill in <strong>${field.label}</strong>.`);
+      if (parentTabFields.includes(field.key)) switchRegSubtab("parent");
       // Scroll to the field
       const el = document.getElementById("r" + field.key.charAt(0).toUpperCase() + field.key.slice(1))
                || document.getElementById("r" + field.key);
@@ -1523,6 +1699,11 @@ async function doRegister() {
     showAlert("registerAlert","danger","Student mobile number must be exactly 10 digits.");
     setFieldError("err-rMobile","Must be exactly 10 digits"); return;
   }
+  // Email validation
+  if (!/^[^@]+@[^@]+\.[^@]+$/.test(f.email)) {
+    showAlert("registerAlert","danger","Please enter a valid email address.");
+    setFieldError("err-rEmail","Enter a valid email address"); return;
+  }
   if (!/^\d{10}$/.test(f.fatherMobile)) {
     showAlert("registerAlert","danger","Father's mobile number must be exactly 10 digits.");
     setFieldError("err-rFatherMobile","Must be exactly 10 digits"); return;
@@ -1531,10 +1712,22 @@ async function doRegister() {
     showAlert("registerAlert","danger","Mother's mobile number must be exactly 10 digits.");
     setFieldError("err-rMotherMobile","Must be exactly 10 digits"); return;
   }
+  // Guardian mobile is optional, but if entered it must be a valid 10-digit number
+  if (f.guardianMobile && !/^\d{10}$/.test(f.guardianMobile)) {
+    showAlert("registerAlert","danger","Guardian's mobile number must be exactly 10 digits.");
+    setFieldError("err-rGuardianMobile","Must be exactly 10 digits");
+    switchRegSubtab("guardian");
+    return;
+  }
   // Aadhar validation
   if (!/^\d{12}$/.test(f.aadhar)) {
     showAlert("registerAlert","danger","Aadhar number must be exactly 12 digits.");
     setFieldError("err-rAadhar","Must be exactly 12 digits"); return;
+  }
+  // IFSC code is optional, but if entered it must match the standard format
+  if (f.ifscCode && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(f.ifscCode)) {
+    showAlert("registerAlert","danger","Please enter a valid IFSC code (e.g. SBIN0001234).");
+    setFieldError("err-rIfscCode","Enter a valid IFSC code"); return;
   }
   // Pincode validation
   if (!/^\d{6}$/.test(f.schoolPincode)) {
@@ -1880,6 +2073,129 @@ function updateAmountHint() {
   window._maxPayAmt = maxAmt;
 }
 
+function switchAdminTab(tab) {
+  const tabs = ["students","verify","settings","analytics"];
+  tabs.forEach(t => {
+    document.getElementById("adminTabPanel-" + t).classList.toggle("active", t === tab);
+    document.getElementById("adminTabBtn-" + t).classList.toggle("active", t === tab);
+  });
+  if (tab === "analytics") renderAnalytics();
+}
+
+let _analyticsPeriod = "day";
+const ANALYTICS_CATEGORY_COLORS = {
+  "Current Year Fees":      "#3D1A6E",
+  "Arrear / Previous Dues": "#C9A84C",
+  "Examination Fees":       "#5E2EA0",
+  "Miscellaneous":          "#8B1A1A"
+};
+
+function switchAnalyticsPeriod(period) {
+  _analyticsPeriod = period;
+  ["day","week","month","year"].forEach(p => {
+    const btn = document.getElementById("analyticsPeriodBtn-" + p);
+    if (btn) btn.classList.toggle("active", p === period);
+  });
+  renderAnalytics();
+}
+
+function renderAnalytics() {
+  const students = window._adminStudentsCache || [];
+  const now = Date.now();
+  const windowMs = {
+    day:   24*60*60*1000,
+    week:  7*24*60*60*1000,
+    month: 30*24*60*60*1000,
+    year:  365*24*60*60*1000
+  }[_analyticsPeriod] || 24*60*60*1000;
+  const threshold = now - windowMs;
+
+  const catTotals = {};
+  let totalCollected = 0;
+  let paymentCount = 0;
+  students.forEach(s => {
+    (s.payments||[]).forEach(p => {
+      if (p.status !== "Confirmed") return;
+      const t = new Date(p.date).getTime();
+      if (isNaN(t) || t < threshold) return;
+      const amt = parseFloat(p.amount) || 0;
+      totalCollected += amt;
+      paymentCount++;
+      catTotals[p.forLabel] = (catTotals[p.forLabel]||0) + amt;
+    });
+  });
+
+  let newRegs = 0;
+  students.forEach(s => {
+    const t = new Date(s.registeredAt).getTime();
+    if (!isNaN(t) && t >= threshold) newRegs++;
+  });
+
+  const elTotal = document.getElementById("analyticsTotalCollected");
+  const elCount = document.getElementById("analyticsPaymentCount");
+  const elRegs  = document.getElementById("analyticsNewRegs");
+  if (elTotal) elTotal.textContent = "₹" + fmt(totalCollected);
+  if (elCount) elCount.textContent = paymentCount;
+  if (elRegs)  elRegs.textContent  = newRegs;
+
+  renderAnalyticsPie(catTotals, totalCollected);
+}
+
+function renderAnalyticsPie(catTotals, total) {
+  const wrap = document.getElementById("analyticsPieWrap");
+  const legend = document.getElementById("analyticsLegend");
+  if (!wrap || !legend) return;
+  const entries = Object.entries(catTotals).filter(([,v]) => v > 0);
+
+  if (total <= 0 || entries.length === 0) {
+    wrap.innerHTML = `<svg viewBox="0 0 200 200" width="200" height="200">
+      <circle cx="100" cy="100" r="80" fill="none" stroke="#E8E0F0" stroke-width="28"/>
+      <text x="100" y="105" text-anchor="middle" font-family="DM Sans, sans-serif" font-size="13" fill="#7A7A9A">No data</text>
+    </svg>`;
+    legend.innerHTML = '<p class="text-muted" style="font-size:0.85rem">No confirmed payments in this period.</p>';
+    return;
+  }
+
+  const R = 80, C = 2*Math.PI*R;
+  let offset = 0;
+  const circles = entries.map(([label, amt]) => {
+    const frac = amt/total;
+    const dash = frac*C;
+    const color = ANALYTICS_CATEGORY_COLORS[label] || "#5E2EA0";
+    const circle = `<circle cx="100" cy="100" r="${R}" fill="none" stroke="${color}" stroke-width="28"
+      stroke-dasharray="${dash} ${C-dash}" stroke-dashoffset="${-offset}" transform="rotate(-90 100 100)"/>`;
+    offset += dash;
+    return circle;
+  }).join("");
+
+  wrap.innerHTML = `<svg viewBox="0 0 200 200" width="200" height="200">
+    ${circles}
+    <circle cx="100" cy="100" r="52" fill="var(--white)"/>
+    <text x="100" y="96" text-anchor="middle" font-family="Cinzel, serif" font-size="14" font-weight="700" fill="var(--royal)">₹${fmt(total)}</text>
+    <text x="100" y="114" text-anchor="middle" font-family="DM Sans, sans-serif" font-size="10" fill="#7A7A9A">Total</text>
+  </svg>`;
+
+  legend.innerHTML = entries
+    .sort((a,b) => b[1]-a[1])
+    .map(([label, amt]) => {
+      const pct = ((amt/total)*100).toFixed(1);
+      const color = ANALYTICS_CATEGORY_COLORS[label] || "#5E2EA0";
+      return `<div class="analytics-legend-item">
+        <span class="analytics-legend-swatch" style="background:${color}"></span>
+        <span>${escHtml(label)} <span style="color:var(--text-muted)">(${pct}%)</span></span>
+        <span class="amt">₹${fmt(amt)}</span>
+      </div>`;
+    }).join("");
+}
+
+function switchRegSubtab(tab) {
+  const tabs = ["parent","guardian"];
+  tabs.forEach(t => {
+    document.getElementById("regSubtabPanel-" + t).classList.toggle("active", t === tab);
+    document.getElementById("regSubtabBtn-" + t).classList.toggle("active", t === tab);
+  });
+}
+
 function switchPayTab(tab) {
   const isUpi = tab === "upi";
   document.getElementById("tabContentUpi").style.display = isUpi ? "block" : "none";
@@ -2136,6 +2452,7 @@ async function renderAdminDash() {
   try {
     const [students, settings] = await Promise.all([DB.getStudents(), DB.getSettings()]);
     setLoading(false);
+    window._adminStudentsCache = students;
 
     document.getElementById("adminTotalStudents").textContent = students.length;
 
@@ -2183,6 +2500,8 @@ async function renderAdminDash() {
       });
     });
     document.getElementById("pendingCount").textContent = pending.length + " pending";
+    const pendingTabBadge = document.getElementById("pendingCountTabBadge");
+    if (pendingTabBadge) pendingTabBadge.textContent = pending.length;
     document.getElementById("pendingApprovalsList").innerHTML = pending.length===0
       ? '<p class="text-muted">No pending verifications.</p>'
       : `<div class="table-wrap" style="border:none;box-shadow:none;border-radius:0"><table>
