@@ -335,6 +335,13 @@ textarea.form-control{resize:vertical;min-height:80px}
 .analytics-legend-swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0}
 .analytics-legend-item .amt{margin-left:auto;font-weight:600;white-space:nowrap;padding-left:10px}
 .analytics-pie-card{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:22px;text-align:center;box-shadow:var(--shadow-card)}
+.analytics-picker-row select.form-control,.analytics-picker-row input.form-control{width:100%}
+.analytics-bar-chart{margin-top:22px;display:flex;flex-direction:column;gap:12px}
+.analytics-bar-row{display:flex;align-items:center;gap:12px;font-size:0.83rem}
+.analytics-bar-label{width:150px;flex-shrink:0;color:var(--text-dark)}
+.analytics-bar-track{flex:1;background:#EFE8F7;border-radius:6px;height:14px;overflow:hidden}
+.analytics-bar-fill{height:100%;border-radius:6px;transition:width 0.4s ease}
+.analytics-bar-amt{width:74px;text-align:right;font-weight:600;flex-shrink:0;color:var(--text-dark)}
 
 /* REGISTER FORM: Parent / Guardian mini-tabs */
 .reg-subtab-nav{display:flex;gap:0;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:18px}
@@ -904,8 +911,8 @@ textarea.form-control{resize:vertical;min-height:80px}
     <div class="admin-tab-nav">
       <button class="admin-tab-btn active" id="adminTabBtn-students" onclick="switchAdminTab('students')">🎓 Registered Students</button>
       <button class="admin-tab-btn" id="adminTabBtn-verify" onclick="switchAdminTab('verify')">🧾 Payment Verifications <span class="tab-mini-badge" id="pendingCountTabBadge">0</span></button>
-      <button class="admin-tab-btn" id="adminTabBtn-settings" onclick="switchAdminTab('settings')">⚙️ Payment Settings &amp; Fee Structure</button>
       <button class="admin-tab-btn" id="adminTabBtn-analytics" onclick="switchAdminTab('analytics')">📊 Analytics</button>
+      <button class="admin-tab-btn" id="adminTabBtn-settings" onclick="switchAdminTab('settings')">⚙️ Payment Settings &amp; Fee Structure</button>
     </div>
 
     <!-- TAB PANEL 1: Registered Students -->
@@ -1084,11 +1091,18 @@ textarea.form-control{resize:vertical;min-height:80px}
       </div>
       <div class="card-body">
         <div class="analytics-period-nav">
-          <button class="analytics-period-btn active" id="analyticsPeriodBtn-day" onclick="switchAnalyticsPeriod('day')">📅 Today</button>
-          <button class="analytics-period-btn" id="analyticsPeriodBtn-week" onclick="switchAnalyticsPeriod('week')">🗓️ This Week</button>
-          <button class="analytics-period-btn" id="analyticsPeriodBtn-month" onclick="switchAnalyticsPeriod('month')">📆 This Month</button>
-          <button class="analytics-period-btn" id="analyticsPeriodBtn-year" onclick="switchAnalyticsPeriod('year')">📊 This Year</button>
+          <button class="analytics-period-btn active" id="analyticsModeBtn-date" onclick="switchAnalyticsMode('date')">📅 Date</button>
+          <button class="analytics-period-btn" id="analyticsModeBtn-week" onclick="switchAnalyticsMode('week')">🗓️ Week</button>
+          <button class="analytics-period-btn" id="analyticsModeBtn-month" onclick="switchAnalyticsMode('month')">📆 Month</button>
+          <button class="analytics-period-btn" id="analyticsModeBtn-year" onclick="switchAnalyticsMode('year')">📊 Year</button>
         </div>
+        <div class="analytics-picker-row" id="analyticsPickerRow" style="margin-bottom:22px;max-width:320px">
+          <input type="date" id="analyticsPickDate" class="form-control" onchange="renderAnalytics()">
+          <select id="analyticsPickWeek" class="form-control" style="display:none" onchange="renderAnalytics()"></select>
+          <input type="month" id="analyticsPickMonth" class="form-control" style="display:none" onchange="renderAnalytics()">
+          <select id="analyticsPickYear" class="form-control" style="display:none" onchange="renderAnalytics()"></select>
+        </div>
+        <div style="font-size:0.8rem;color:var(--text-muted);margin:-14px 0 20px" id="analyticsRangeCaption"></div>
         <div class="analytics-grid">
           <div>
             <div class="analytics-stat-row">
@@ -1106,6 +1120,7 @@ textarea.form-control{resize:vertical;min-height:80px}
               </div>
             </div>
             <div class="analytics-legend" id="analyticsLegend"></div>
+            <div class="analytics-bar-chart" id="analyticsBarChart"></div>
           </div>
           <div class="analytics-pie-card">
             <div id="analyticsPieWrap"></div>
@@ -2074,7 +2089,7 @@ function updateAmountHint() {
 }
 
 function switchAdminTab(tab) {
-  const tabs = ["students","verify","settings","analytics"];
+  const tabs = ["students","verify","analytics","settings"];
   tabs.forEach(t => {
     document.getElementById("adminTabPanel-" + t).classList.toggle("active", t === tab);
     document.getElementById("adminTabBtn-" + t).classList.toggle("active", t === tab);
@@ -2082,7 +2097,7 @@ function switchAdminTab(tab) {
   if (tab === "analytics") renderAnalytics();
 }
 
-let _analyticsPeriod = "day";
+let _analyticsMode = "date";
 const ANALYTICS_CATEGORY_COLORS = {
   "Current Year Fees":      "#3D1A6E",
   "Arrear / Previous Dues": "#C9A84C",
@@ -2090,47 +2105,148 @@ const ANALYTICS_CATEGORY_COLORS = {
   "Miscellaneous":          "#8B1A1A"
 };
 
-function switchAnalyticsPeriod(period) {
-  _analyticsPeriod = period;
-  ["day","week","month","year"].forEach(p => {
-    const btn = document.getElementById("analyticsPeriodBtn-" + p);
-    if (btn) btn.classList.toggle("active", p === period);
+function pad2(n) { return String(n).padStart(2, "0"); }
+function toDateInputValue(d) { return d.getFullYear() + "-" + pad2(d.getMonth()+1) + "-" + pad2(d.getDate()); }
+function fmtShortDate(d) { return d.toLocaleDateString("en-IN", { day:"numeric", month:"short" }); }
+
+// Monday-based start of week
+function getWeekStart(d) {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = (day === 0 ? -6 : 1) - day;
+  date.setDate(date.getDate() + diff);
+  date.setHours(0,0,0,0);
+  return date;
+}
+
+function populateAnalyticsPickers() {
+  const students = window._adminStudentsCache || [];
+  const today = new Date();
+
+  // Date picker default = today
+  const dateEl = document.getElementById("analyticsPickDate");
+  if (dateEl && !dateEl.value) dateEl.value = toDateInputValue(today);
+
+  // Month picker default = current month
+  const monthEl = document.getElementById("analyticsPickMonth");
+  if (monthEl && !monthEl.value) monthEl.value = toDateInputValue(today).slice(0,7);
+
+  // Week picker: last 10 weeks (Monday-start), most recent first
+  const weekEl = document.getElementById("analyticsPickWeek");
+  if (weekEl && !weekEl.dataset.populated) {
+    const thisWeekStart = getWeekStart(today);
+    let opts = "";
+    for (let i = 0; i < 10; i++) {
+      const start = new Date(thisWeekStart);
+      start.setDate(start.getDate() - i*7);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 6);
+      const label = (i === 0 ? "This Week: " : "") + fmtShortDate(start) + " – " + fmtShortDate(end) + ", " + end.getFullYear();
+      opts += `<option value="${toDateInputValue(start)}">${label}</option>`;
+    }
+    weekEl.innerHTML = opts;
+    weekEl.dataset.populated = "1";
+  }
+
+  // Year picker: any year present in the data, plus current year
+  const yearEl = document.getElementById("analyticsPickYear");
+  if (yearEl && !yearEl.dataset.populated) {
+    const years = new Set([today.getFullYear()]);
+    students.forEach(s => {
+      const ry = new Date(s.registeredAt).getFullYear();
+      if (!isNaN(ry)) years.add(ry);
+      (s.payments||[]).forEach(p => {
+        const py = new Date(p.date).getFullYear();
+        if (!isNaN(py)) years.add(py);
+      });
+    });
+    const sorted = Array.from(years).sort((a,b) => b-a);
+    yearEl.innerHTML = sorted.map(y => `<option value="${y}">${y}</option>`).join("");
+    yearEl.dataset.populated = "1";
+  }
+}
+
+function switchAnalyticsMode(mode) {
+  _analyticsMode = mode;
+  ["date","week","month","year"].forEach(m => {
+    const btn = document.getElementById("analyticsModeBtn-" + m);
+    if (btn) btn.classList.toggle("active", m === mode);
   });
+  document.getElementById("analyticsPickDate").style.display  = mode === "date"  ? "" : "none";
+  document.getElementById("analyticsPickWeek").style.display  = mode === "week"  ? "" : "none";
+  document.getElementById("analyticsPickMonth").style.display = mode === "month" ? "" : "none";
+  document.getElementById("analyticsPickYear").style.display  = mode === "year"  ? "" : "none";
   renderAnalytics();
 }
 
-function renderAnalytics() {
-  const students = window._adminStudentsCache || [];
-  const now = Date.now();
-  const windowMs = {
-    day:   24*60*60*1000,
-    week:  7*24*60*60*1000,
-    month: 30*24*60*60*1000,
-    year:  365*24*60*60*1000
-  }[_analyticsPeriod] || 24*60*60*1000;
-  const threshold = now - windowMs;
+function getAnalyticsRange() {
+  const mode = _analyticsMode;
+  const today = new Date();
+  let start, end, caption;
 
-  const catTotals = {};
+  if (mode === "week") {
+    const val = document.getElementById("analyticsPickWeek").value;
+    start = val ? new Date(val + "T00:00:00") : getWeekStart(today);
+    end = new Date(start); end.setDate(end.getDate() + 7);
+    const endDisp = new Date(end); endDisp.setDate(endDisp.getDate() - 1);
+    caption = fmtShortDate(start) + " – " + fmtShortDate(endDisp) + ", " + endDisp.getFullYear();
+  } else if (mode === "month") {
+    const val = document.getElementById("analyticsPickMonth").value;
+    const [y, m] = (val || toDateInputValue(today).slice(0,7)).split("-").map(Number);
+    start = new Date(y, m-1, 1);
+    end = new Date(y, m, 1);
+    caption = start.toLocaleDateString("en-IN", { month:"long", year:"numeric" });
+  } else if (mode === "year") {
+    const val = document.getElementById("analyticsPickYear").value;
+    const y = val ? Number(val) : today.getFullYear();
+    start = new Date(y, 0, 1);
+    end = new Date(y+1, 0, 1);
+    caption = String(y);
+  } else { // date
+    const val = document.getElementById("analyticsPickDate").value;
+    const d = val ? new Date(val + "T00:00:00") : today;
+    start = new Date(d); start.setHours(0,0,0,0);
+    end = new Date(start); end.setDate(end.getDate() + 1);
+    caption = start.toLocaleDateString("en-IN", { day:"numeric", month:"long", year:"numeric" });
+  }
+  return { start, end, caption };
+}
+
+function renderAnalytics() {
+  // Render analytics picker and populate pickers
+  populateAnalyticsPickers();
+  const { start, end, caption } = getAnalyticsRange();
+  const startMs = start.getTime(), endMs = end.getTime();
+
+  const captionEl = document.getElementById("analyticsRangeCaption");
+  if (captionEl) captionEl.textContent = "Showing: " + caption;
+
+  // Initialize totals
   let totalCollected = 0;
   let paymentCount = 0;
-  students.forEach(s => {
-    (s.payments||[]).forEach(p => {
-      if (p.status !== "Confirmed") return;
-      const t = new Date(p.date).getTime();
-      if (isNaN(t) || t < threshold) return;
-      const amt = parseFloat(p.amount) || 0;
+  const catTotals = {};
+  let newRegs = 0;
+
+  // Process payments for the selected period (for stats and pie chart)
+  window._adminStudentsCache.forEach(student => {
+    (student.payments || []).forEach(payment => {
+      if (payment.status !== "Confirmed") return;
+      const t = new Date(payment.date).getTime();
+      if (isNaN(t) || t < startMs || t >= endMs) return;
+      const amt = parseFloat(payment.amount) || 0;
       totalCollected += amt;
       paymentCount++;
-      catTotals[p.forLabel] = (catTotals[p.forLabel]||0) + amt;
+      catTotals[payment.forLabel] = (catTotals[payment.forLabel] || 0) + amt;
     });
   });
 
-  let newRegs = 0;
-  students.forEach(s => {
-    const t = new Date(s.registeredAt).getTime();
-    if (!isNaN(t) && t >= threshold) newRegs++;
+  // Count new registrations in the selected period
+  window._adminStudentsCache.forEach(student => {
+    const t = new Date(student.registeredAt).getTime();
+    if (!isNaN(t) && t >= startMs && t < endMs) newRegs++;
   });
 
+  // Update the stats
   const elTotal = document.getElementById("analyticsTotalCollected");
   const elCount = document.getElementById("analyticsPaymentCount");
   const elRegs  = document.getElementById("analyticsNewRegs");
@@ -2138,7 +2254,147 @@ function renderAnalytics() {
   if (elCount) elCount.textContent = paymentCount;
   if (elRegs)  elRegs.textContent  = newRegs;
 
+  // Render the pie chart (category breakdown for the selected period)
   renderAnalyticsPie(catTotals, totalCollected);
+
+  // --- NEW: Compute time series data for the graph ---
+  // We will show the last 7 days/weeks/months/years based on the current analytics mode
+  const mode = _analyticsMode;
+  const now = new Date();
+  let timeSeriesData = [];
+
+  if (mode === "date") {
+    // Last 7 days (including today)
+    for (let i = 0; i < 7; i++) {
+      const day = new Date();
+      day.setDate(now.getDate() - i);
+      day.setHours(0,0,0,0);
+      const startOfDay = new Date(day);
+      const endOfDay = new Date(day);
+      endOfDay.setDate(endOfDay.getDate() + 1);
+      let total = 0;
+      window._adminStudentsCache.forEach(student => {
+        (student.payments || []).forEach(payment => {
+          if (payment.status !== "Confirmed") return;
+          const t = new Date(payment.date).getTime();
+          if (t >= startOfDay.getTime() && t < endOfDay.getTime()) {
+            total += parseFloat(payment.amount) || 0;
+          }
+        });
+      });
+      const label = formatDate(startOfDay); // e.g., e.g., 'Jul 22''
+      timeSeriesData.push({
+        label: label,
+        amount: total,
+        start: startOfDay,
+        end: endOfDay
+      });
+    }
+    // Reverse so that the most recent day is last (so the chart shows oldest to newest left to right)
+    timeSeriesData.reverse();
+  } else if (mode === "week") {
+    // Last 4 weeks (each week starting on Monday)
+    for (let i = 0; i < 4; i++) {
+      const weekStart = new Date(now);
+      const day = weekStart.getDay();
+      const diff = (day === 0 ? -6 : 1) - day; // Monday is 1, so adjust to Monday
+      weekStart.setDate(weekStart.getDate() + diff - i*7);
+      weekStart.setHours(0,0,0,0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+      let total = 0;
+      window._adminStudentsCache.forEach(student => {
+        (student.payments || []).forEach(payment => {
+          if (payment.status !== "Confirmed") return;
+          const t = new Date(payment.date).getTime();
+          if (t >= weekStart.getTime() && t < weekEnd.getTime()) {
+            total += parseFloat(payment.amount) || 0;
+          }
+        });
+      });
+      const label = `${formatDate(weekStart)} – ${formatDate(new Date(weekEnd.getTime()-1))}`;
+      timeSeriesData.push({
+        label: label,
+        amount: total,
+        start: weekStart,
+        end: weekEnd
+      });
+    }
+    timeSeriesData.reverse();
+  } else if (mode === "month") {
+    // Last 6 months
+    for (let i = 0; i < 6; i++) {
+      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      let total = 0;
+      window._adminStudentsCache.forEach(student => {
+        (student.payments || []).forEach(payment => {
+          if (payment.status !== "Confirmed") return;
+          const t = new Date(payment.date).getTime();
+          if (t >= monthStart.getTime() && t < monthEnd.getTime()) {
+            total += parseFloat(payment.amount) || 0;
+          }
+        });
+      });
+      const label = monthStart.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+      timeSeriesData.push({
+        label: label,
+        amount: total,
+        start: monthStart,
+        end: monthEnd
+      });
+    }
+    timeSeriesData.reverse();
+  } else if (mode === "year") {
+    // Last 5 years
+    for (let i = 0; i < 5; i++) {
+      const yearStart = new Date(now.getFullYear() - i, 0, 1);
+      const yearEnd = new Date(now.getFullYear() - i + 1, 0, 1);
+      let total = 0;
+      window._adminStudentsCache.forEach(student => {
+        (student.payments || []).forEach(payment => {
+          if (payment.status !== "Confirmed") return;
+          const t = new Date(payment.date).getTime();
+          if (t >= yearStart.getTime() && t < yearEnd.getTime()) {
+            total += parseFloat(payment.amount) || 0;
+          }
+        });
+      });
+      const label = String(yearStart.getFullYear());
+      timeSeriesData.push({
+        label: label,
+        amount: total,
+        start: yearStart,
+        end: yearEnd
+      });
+    }
+    timeSeriesData.reverse();
+  }
+
+  // Render the time series bar chart
+  renderTimeSeriesBarChart(timeSeriesData);
+}
+
+function renderAnalyticsBars(catTotals, total) {
+  const wrap = document.getElementById("analyticsBarChart");
+  if (!wrap) return;
+  const entries = Object.entries(catTotals).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
+
+  if (total <= 0 || entries.length === 0) {
+    wrap.innerHTML = "";
+    return;
+  }
+
+  const maxAmt = Math.max(...entries.map(([,v]) => v));
+  wrap.innerHTML = entries.map(([label, amt]) => {
+    const widthPct = (amt/maxAmt*100).toFixed(1);
+    const color = ANALYTICS_CATEGORY_COLORS[label] || "#5E2EA0";
+    return `<div class="analytics-bar-row">
+      <span class="analytics-bar-label">${escHtml(label)}</span>
+      <span class="analytics-bar-track"><span class="analytics-bar-fill" style="width:${widthPct}%;background:${color}"></span></span>
+      <span class="analytics-bar-amt">₹${fmt(amt)}</span>
+    </div>`;
+  }).join("");
 }
 
 function renderAnalyticsPie(catTotals, total) {
@@ -2187,6 +2443,112 @@ function renderAnalyticsPie(catTotals, total) {
       </div>`;
     }).join("");
 }
+
+function renderTimeSeriesBarChart(timeSeriesData) {
+    const wrap = document.getElementById("analyticsBarChart");
+    if (!wrap) return;
+
+    if (timeSeriesData.length === 0) {
+        wrap.innerHTML = '<p class="text-muted">No data for the selected period.</p>';
+        return;
+    }
+
+    // Find the max amount for scaling
+    const maxAmount = Math.max(...timeSeriesData.map(d => d.amount));
+
+    wrap.innerHTML = timeSeriesData.map((data, index) => {
+        const widthPct = (data.amount / maxAmount * 100).toFixed(1);
+        const color = "#5E2EA0"; // default purple
+        return `<div class="analytics-bar-row" data-index="${index}" data-label="${escapeHtml(data.label)}" data-amount="${data.amount}" data-start="${data.start.getTime()}" data-end="${data.end.getTime()}">
+            <span class="analytics-bar-label">${escapeHtml(data.label)}</span>
+            <span class="analytics-bar-track"><span class="analytics-bar-fill" style="width:${widthPct}%;background:${color}"></span></span>
+            <span class="analytics-bar-amt">\u20B9${fmt(data.amount)}</span>
+        </div>';
+    }).join("");
+
+    // Add click event listener to each bar
+    wrap.querySelectorAll(".analytics-bar-row").forEach(bar => {
+        bar.addEventListener("click", function() {
+            const startTime = parseInt(this.getAttribute("data-start"));
+            const endTime = parseInt(this.getAttribute("data-end"));
+            showTimeSeriesDetailsForPeriod(startTime, endTime);
+        });
+    });
+}
+
+function showTimeSeriesDetailsForPeriod(startTime, endTime) {
+    const students = window._adminStudentsCache || [];
+    // Filter payments that are confirmed and within the time range
+    const payments = [];
+    students.forEach(student => {
+        (student.payments || []).forEach(payment => {
+            if (payment.status === "Confirmed") {
+                const paymentTime = new Date(payment.date).getTime();
+                if (paymentTime >= startTime && paymentTime < endTime) {
+                    payments.push({ student, payment });
+                }
+            }
+        });
+    });
+
+    // Sort by date descending
+    payments.sort((a, b) => new Date(b.payment.date) - new Date(a.payment.date));
+
+    // Create modal content
+    const modal = document.createElement("div");
+    modal.className = "overlay";
+    modal.id = "timeSeriesDetailsModal";
+    modal.innerHTML = `
+        <div class="modal">
+            <div class="modal-head">
+                <h2>Payment Details</h2>
+                <button class="modal-close" onclick="closeTimeSeriesDetailsModal()">✕</button>
+            </div>
+            <div class="gold-bar"></div>
+            <div class="modal-body" id="timeSeriesDetailsContent">
+                <!-- Content will be filled in -->
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    // Fill the content
+    const contentDiv = document.getElementById("timeSeriesDetailsContent");
+    if (payments.length === 0) {
+        contentDiv.innerHTML = '<p class="text-muted">No payments found for this period.</p>';
+    } else {
+        let html = '<div class="table-wrap" style="border:none;box-shadow:none;border-radius:0"><table>';
+        html += '<thead><tr><th>Student</th><th>App ID</th><th>Amount</th><th>Date</th><th>For</th></tr></thead><tbody>';
+        payments.forEach(item => {
+            const { student, payment } = item;
+            html += `<tr>
+                <td style="font-weight:500">${escapeHtml(student.name)}</td>
+                <td class="muted">${escapeHtml(student.appId)}</td>
+                <td><strong>\u20B9${fmt(payment.amount)}</strong></td>
+                <td class="muted">${formatDate(payment.date)}</td>
+                <td>${escapeHtml(payment.forLabel)}</td>
+            </tr>`;
+        });
+        html += '</tbody></table></div>';
+        contentDiv.innerHTML = html;
+    }
+
+    // Show the modal
+    modal.classList.add("open");
+}
+
+function closeTimeSeriesDetailsModal() {
+    const modal = document.getElementById("timeSeriesDetailsModal");
+    if (modal) {
+        modal.classList.remove("open");
+        setTimeout(() => {
+            if (modal.parentNode) {
+                modal.parentNode.removeChild(modal);
+            }
+        }, 300);
+    }
+}
+
 
 function switchRegSubtab(tab) {
   const tabs = ["parent","guardian"];
