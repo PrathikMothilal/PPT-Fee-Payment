@@ -323,8 +323,6 @@ textarea.form-control{resize:vertical;min-height:80px}
 .analytics-period-btn{padding:8px 18px;border-radius:20px;border:1.5px solid var(--border);background:#fafafa;color:var(--text-mid);font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:500;cursor:pointer;transition:all 0.2s}
 .analytics-period-btn:hover{border-color:var(--royal-light);color:var(--royal)}
 .analytics-period-btn.active{background:var(--royal);border-color:var(--royal);color:#fff}
-.analytics-grid{display:grid;grid-template-columns:1fr 280px;gap:28px;align-items:start}
-@media (max-width:760px){.analytics-grid{grid-template-columns:1fr}}
 .analytics-stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
 @media (max-width:560px){.analytics-stat-row{grid-template-columns:1fr}}
 .analytics-stat-box{background:var(--gold-pale);border:1px solid var(--border-gold);border-radius:12px;padding:16px 18px}
@@ -334,14 +332,36 @@ textarea.form-control{resize:vertical;min-height:80px}
 .analytics-legend-item{display:flex;align-items:center;gap:10px;font-size:0.85rem;color:var(--text-dark)}
 .analytics-legend-swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0}
 .analytics-legend-item .amt{margin-left:auto;font-weight:600;white-space:nowrap;padding-left:10px}
-.analytics-pie-card{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:22px;text-align:center;box-shadow:var(--shadow-card)}
 .analytics-picker-row select.form-control,.analytics-picker-row input.form-control{width:100%}
-.analytics-bar-chart{margin-top:22px;display:flex;flex-direction:column;gap:12px}
+.analytics-charts-row{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;margin-top:22px}
+.analytics-pie-col{flex:0 0 260px;max-width:100%}
+.analytics-pie-chart{margin-bottom:16px}
+.analytics-bar-chart{flex:1;min-width:280px;overflow-x:auto;margin-top:0}
+.ts-bar{cursor:pointer;transition:opacity 0.15s}
+.ts-bar:hover{opacity:0.72}
 .analytics-bar-row{display:flex;align-items:center;gap:12px;font-size:0.83rem}
 .analytics-bar-label{width:150px;flex-shrink:0;color:var(--text-dark)}
 .analytics-bar-track{flex:1;background:#EFE8F7;border-radius:6px;height:14px;overflow:hidden}
 .analytics-bar-fill{height:100%;border-radius:6px;transition:width 0.4s ease}
 .analytics-bar-amt{width:74px;text-align:right;font-weight:600;flex-shrink:0;color:var(--text-dark)}
+.analytics-bar-row{cursor:pointer;padding:6px 8px;border-radius:8px;transition:background 0.15s}
+.analytics-bar-row:hover{background:var(--gold-pale)}
+.analytics-bar-row:hover .analytics-bar-label{color:var(--royal)}
+.modal-wide{max-width:960px}
+.detail-summary-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px}
+@media (max-width:560px){.detail-summary-row{grid-template-columns:1fr}}
+.detail-summary-box{background:var(--gold-pale);border:1px solid var(--border-gold);border-radius:12px;padding:14px 18px}
+.detail-summary-box .num{font-family:'Cinzel',serif;font-size:1.3rem;color:var(--royal);font-weight:700;line-height:1.2}
+.detail-summary-box .lbl{font-size:0.7rem;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.05em;margin-top:4px}
+.date-group{margin-bottom:22px}
+.date-group:last-child{margin-bottom:0}
+.date-group-head{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,var(--royal-dark) 0%,var(--royal) 100%);color:#fff;padding:10px 18px;border-radius:10px 10px 0 0;font-size:0.85rem}
+.date-group-head .dg-date{font-family:'Cinzel',serif;font-weight:600;letter-spacing:0.02em}
+.date-group-head .dg-meta{color:var(--gold-light);font-size:0.8rem}
+.date-group .table-wrap{border-radius:0 0 10px 10px;margin-top:0}
+.detail-student-name{font-weight:600}
+.detail-student-sub{font-size:0.76rem;color:var(--text-muted);margin-top:2px}
+.detail-empty{text-align:center;padding:40px 20px;color:var(--text-muted)}
 
 /* REGISTER FORM: Parent / Guardian mini-tabs */
 .reg-subtab-nav{display:flex;gap:0;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:18px}
@@ -757,7 +777,7 @@ textarea.form-control{resize:vertical;min-height:80px}
                 min="0" step="1"
                 oninput="enforceNonNeg(this);capToMaxDue(this);updateAmountHint()"
                 style="padding-right:90px">
-              <button type="button" onclick="fillMaxDue()"
+              <button type="button" id="btnPayFull" onclick="fillMaxDue()"
                 style="position:absolute;right:6px;top:50%;transform:translateY(-50%);
                   background:var(--royal);color:#fff;border:none;border-radius:6px;
                   padding:4px 10px;font-size:0.72rem;font-weight:600;cursor:pointer;
@@ -769,11 +789,16 @@ textarea.form-control{resize:vertical;min-height:80px}
           </div>
           <div class="form-group" style="margin:0">
             <label>Payment For</label>
-            <select id="sPayFor" class="form-control" onchange="updateAmountHint();clearPayAmt()">
-              <option value="Current Year Fees">Current Year Fees</option>
-              <option value="Arrear / Previous Dues">Arrear / Previous Dues</option>
-              <option value="Examination Fees">Examination Fees</option>
+            <select id="sPayFor" class="form-control" onchange="onPayForChange()">
+              <option value="Application Fee">Application Fee</option>
+              <option value="Tuition Fee">Tuition Fee</option>
+              <option value="Record Note">Record Note</option>
+              <option value="Exam Fee">Exam Fee</option>
+              <option value="Exam fees with fine">Exam fees with fine</option>
+              <option value="No dues form">No dues form</option>
               <option value="Miscellaneous">Miscellaneous</option>
+              <option value="ID card">ID card</option>
+              <option value="Book">Book</option>
             </select>
           </div>
         </div>
@@ -1043,36 +1068,45 @@ textarea.form-control{resize:vertical;min-height:80px}
 
         <!-- Fee Structure column -->
         <div class="combined-col">
+          <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:10px">
+            Set the default amount for each fee category, per year. "Exam fees with fine", "No dues form" and "Miscellaneous" are variable / ad-hoc amounts and have no default here.
+          </div>
           <!-- Read-only view -->
-          <div id="feeStructView">
-            <div class="setting-row">
-              <span class="setting-label">1st Year Fee</span>
-              <span class="setting-val" id="viewFee1">₹0</span>
-            </div>
-            <div class="setting-row">
-              <span class="setting-label">2nd Year Fee</span>
-              <span class="setting-val" id="viewFee2">₹0</span>
-            </div>
-            <div class="setting-row">
-              <span class="setting-label">3rd Year Fee</span>
-              <span class="setting-val" id="viewFee3">₹0</span>
-            </div>
+          <div id="feeStructView" style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:0.8rem">
+              <thead>
+                <tr>
+                  <th style="text-align:left;padding:5px 4px;border-bottom:1px solid var(--border)">Category</th>
+                  <th style="text-align:right;padding:5px 4px;border-bottom:1px solid var(--border)">1st Yr</th>
+                  <th style="text-align:right;padding:5px 4px;border-bottom:1px solid var(--border)">2nd Yr</th>
+                  <th style="text-align:right;padding:5px 4px;border-bottom:1px solid var(--border)">3rd Yr</th>
+                </tr>
+              </thead>
+              <tbody id="feeStructViewBody"></tbody>
+              <tfoot>
+                <tr style="font-weight:600">
+                  <td style="padding:6px 4px;border-top:1px solid var(--border)">Total</td>
+                  <td style="text-align:right;padding:6px 4px;border-top:1px solid var(--border)" id="viewFee1">₹0</td>
+                  <td style="text-align:right;padding:6px 4px;border-top:1px solid var(--border)" id="viewFee2">₹0</td>
+                  <td style="text-align:right;padding:6px 4px;border-top:1px solid var(--border)" id="viewFee3">₹0</td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
           <!-- Edit form -->
-          <div id="feeStructEdit" style="display:none">
-            <div class="form-group">
-              <label>1st Year Fee (₹)</label>
-              <input type="number" id="defFee1" class="form-control" placeholder="0" min="0" step="1" oninput="enforceNonNeg(this)">
-            </div>
-            <div class="form-group">
-              <label>2nd Year Fee (₹)</label>
-              <input type="number" id="defFee2" class="form-control" placeholder="0" min="0" step="1" oninput="enforceNonNeg(this)">
-            </div>
-            <div class="form-group">
-              <label>3rd Year Fee (₹)</label>
-              <input type="number" id="defFee3" class="form-control" placeholder="0" min="0" step="1" oninput="enforceNonNeg(this)">
-            </div>
-            <div class="d-flex gap-8">
+          <div id="feeStructEdit" style="display:none;overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:0.8rem" id="feeStructEditTable">
+              <thead>
+                <tr>
+                  <th style="text-align:left;padding:5px 4px">Category</th>
+                  <th style="text-align:center;padding:5px 4px">1st Yr (₹)</th>
+                  <th style="text-align:center;padding:5px 4px">2nd Yr (₹)</th>
+                  <th style="text-align:center;padding:5px 4px">3rd Yr (₹)</th>
+                </tr>
+              </thead>
+              <tbody id="feeStructEditBody"></tbody>
+            </table>
+            <div class="d-flex gap-8" style="margin-top:10px">
               <button class="btn btn-primary btn-sm" onclick="saveDefaultFees()">Save Changes</button>
               <button class="btn btn-outline btn-sm" onclick="cancelEditSection('feeStruct')">Cancel</button>
             </div>
@@ -1103,29 +1137,32 @@ textarea.form-control{resize:vertical;min-height:80px}
           <select id="analyticsPickYear" class="form-control" style="display:none" onchange="renderAnalytics()"></select>
         </div>
         <div style="font-size:0.8rem;color:var(--text-muted);margin:-14px 0 20px" id="analyticsRangeCaption"></div>
-        <div class="analytics-grid">
-          <div>
-            <div class="analytics-stat-row">
-              <div class="analytics-stat-box">
-                <div class="num" id="analyticsTotalCollected">₹0</div>
-                <div class="lbl">Total Collected</div>
-              </div>
-              <div class="analytics-stat-box">
-                <div class="num" id="analyticsPaymentCount">0</div>
-                <div class="lbl">Payments Confirmed</div>
-              </div>
-              <div class="analytics-stat-box">
-                <div class="num" id="analyticsNewRegs">0</div>
-                <div class="lbl">New Registrations</div>
-              </div>
-            </div>
+        <div class="analytics-stat-row">
+          <div class="analytics-stat-box">
+            <div class="num" id="analyticsTotalCollected">₹0</div>
+            <div class="lbl">Total Collected</div>
+          </div>
+          <div class="analytics-stat-box">
+            <div class="num" id="analyticsPaymentCount">0</div>
+            <div class="lbl">Payments Confirmed</div>
+          </div>
+          <div class="analytics-stat-box">
+            <div class="num" id="analyticsNewRegs">0</div>
+            <div class="lbl">New Registrations</div>
+          </div>
+        </div>
+        <div class="analytics-charts-row">
+          <div class="analytics-pie-col">
+            <div class="analytics-pie-chart" id="analyticsPieChart"></div>
             <div class="analytics-legend" id="analyticsLegend"></div>
-            <div class="analytics-bar-chart" id="analyticsBarChart"></div>
           </div>
-          <div class="analytics-pie-card">
-            <div id="analyticsPieWrap"></div>
-            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:10px">Confirmed fee collections by category</div>
-          </div>
+          <div class="analytics-bar-chart" id="analyticsBarChart"></div>
+        </div>
+
+        <div style="margin-top:32px;padding-top:24px;border-top:1px solid var(--border)">
+          <h3 style="font-family:'Cinzel',serif;color:var(--royal);font-size:1rem;font-weight:600;margin-bottom:4px" id="analyticsPeriodDetailsTitle">Payment Details</h3>
+          <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:16px">Students who paid fees in the period selected above</div>
+          <div id="analyticsPeriodDetails"></div>
         </div>
       </div>
     </div>
@@ -1139,10 +1176,77 @@ textarea.form-control{resize:vertical;min-height:80px}
   <div class="modal">
     <div class="modal-head">
       <h2 id="modalStudentTitle">Student Details</h2>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+      <button class="modal-close" onclick="confirmCloseModal()">✕</button>
     </div>
     <div class="gold-bar"></div>
     <div class="modal-body"><div id="modalContent"></div></div>
+  </div>
+</div>
+
+<!-- ═══════════ MODAL: Admin — Record Cash/Offline Payment ═══════════ -->
+<div class="overlay" id="adminPayModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="adminPayModalTitle">Record Payment</h2>
+      <button class="modal-close" onclick="closeAdminPayModal()">✕</button>
+    </div>
+    <div class="gold-bar"></div>
+    <div class="modal-body">
+      <div id="adminPayAlert"></div>
+      <div id="adminPayStudentInfo" style="background:var(--gold-pale);border:1px solid var(--border-gold);border-radius:10px;padding:12px 16px;margin-bottom:18px;font-size:0.88rem"></div>
+
+      <div class="form-grid-2" style="margin-bottom:0">
+        <div class="form-group">
+          <label>Amount Received (₹) <span class="required">*</span></label>
+          <div style="position:relative">
+            <input type="number" id="adminPayAmount" class="form-control" placeholder="Enter amount in rupees"
+              min="0" step="1" oninput="enforceNonNeg(this)" style="padding-right:90px">
+            <button type="button" onclick="fillAdminPayMaxDue()"
+              style="position:absolute;right:6px;top:50%;transform:translateY(-50%);
+                background:var(--royal);color:#fff;border:none;border-radius:6px;
+                padding:4px 10px;font-size:0.72rem;font-weight:600;cursor:pointer;
+                white-space:nowrap;letter-spacing:0.02em"
+              title="Fill maximum due amount">
+              Pay Full
+            </button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Payment For</label>
+          <select id="adminPayFor" class="form-control">
+            <option value="Application Fee">Application Fee</option>
+            <option value="Tuition Fee">Tuition Fee</option>
+            <option value="Record Note">Record Note</option>
+            <option value="Exam Fee">Exam Fee</option>
+            <option value="Exam fees with fine">Exam fees with fine</option>
+            <option value="No dues form">No dues form</option>
+            <option value="Miscellaneous">Miscellaneous</option>
+            <option value="ID card">ID card</option>
+            <option value="Book">Book</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label>Payment Method</label>
+          <select id="adminPayMethod" class="form-control">
+            <option value="Cash">💵 Cash</option>
+            <option value="Cheque">🧾 Cheque</option>
+            <option value="DD">📄 Demand Draft</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Note <span class="optional">(optional)</span></label>
+          <input type="text" id="adminPayNote" class="form-control" placeholder="e.g. Cheque No. / remarks">
+        </div>
+      </div>
+
+      <button class="btn btn-gold btn-full" onclick="submitAdminCashPayment()">✓ Record Payment &amp; Confirm</button>
+      <p style="font-size:0.78rem;color:var(--text-muted);margin-top:10px;text-align:center">
+        This marks the payment as confirmed immediately — for cash / cheque / DD collected in person.
+      </p>
+    </div>
   </div>
 </div>
 
@@ -1174,48 +1278,141 @@ let db = null;
 let useFirebase = false;
 
 async function initDB() {
+  // Fixed: Add timeouts to prevent hanging, better error diagnostics
   setLoading(true, "Connecting to database…");
+  let dbInitSuccess = false;
+  let connectionError = null;
+
   try {
+    // Check if Firebase loaded correctly
+    if (typeof firebase === 'undefined' || !firebase.apps) {
+      throw new Error('Firebase library failed to load - check network connection and CDN accessibility');
+    }
+
     if (!firebase.apps.length) {
+      console.log("Initializing Firebase app...");
       firebase.initializeApp(firebaseConfig);
     }
     db = firebase.firestore();
-    // Offline persistence — non-fatal if fails (e.g. multiple tabs, incognito)
+    console.log("Firebase app initialized, Firestore instance obtained");
+
+    // Set up offline persistence with timeout
+    console.log("Setting up offline persistence...");
     try {
-      await db.enablePersistence({ synchronizeTabs: true });
-    } catch(pe) {
-      console.warn("Persistence:", pe.code);
+      await promiseWithTimeout(
+        db.enablePersistence({ synchronizeTabs: true }), 
+        5000 // 5 second timeout
+      );
+      console.log("Offline persistence enabled");
+    } catch (pe) {
+      // Persistence failure is non-fatal (e.g. multiple tabs, incognito)
+      console.warn("Persistence setup failed or timed out (continuing anyway):", pe.code || pe.message);
     }
-    // Confirm live server connectivity (bypass cache)
-    await db.collection("config").doc("settings").get({ source: "server" }).catch(() =>
-      db.collection("config").doc("settings").get()
-    );
+
+    // Verify database connectivity with timeout
+    console.log("Verifying database connectivity...");
+    let settingsDoc;
+    try {
+      // Try to fetch from server with timeout
+      settingsDoc = await promiseWithTimeout(
+        db.collection('config').doc('settings').get({ source: 'server' }),
+        8000 // 8 second timeout for initial connection
+      );
+      console.log("Connected to Firestore server");
+    } catch (serverError) {
+      // Server failed or timed out, try cache
+      console.log("Server connection failed or timed out, trying cache...");
+      try {
+        settingsDoc = await promiseWithTimeout(
+          db.collection('config').doc('settings').get(),
+          5000 // 5 second timeout for cache
+        );
+        console.log("Connected to Firestore cache (offline mode)");
+      } catch (cacheError) {
+        // Both failed
+        throw new Error(`Unable to connect to Firestore: Server failed (${serverError.message}), Cache failed (${cacheError.message})`);
+      }
+    }
+
     useFirebase = true;
-    console.log("✅ Firestore connected — project: ppt86-95c61");
+    console.log('✅ Firestore connected — project: ppt86-95c61');
+    dbInitSuccess = true;
   } catch(e) {
-    console.warn("⚠️ Firestore unavailable, falling back to localStorage:", e.message);
+    console.warn('⚠️ Firestore connection failed:', e.message);
+    useFirebase = false;
+    dbInitSuccess = false;
+    // Store the error for potential display to admin
+    connectionError = e;
+  } finally {
+    // Always hide loading indicator and provide feedback
+    setLoading(false);
+    
+    // If we have a connection error and we're in admin mode, show a more prominent warning
+    if (connectionError && currentUser === "admin") {
+      // Delay slightly to let UI settle, then show warning
+      setTimeout(() => {
+        showAlert("loginAlert", "warning", 
+          `Database connection issue: ${connectionError.message}
+` +
+          `The system will continue to work using local storage, but data may not sync across devices.
+` +
+          `Please contact IT if this persists.`);
+      }, 1000);
+    }
+  }
+
+  // Additional safety: if we somehow didn't set useFirebase, default to false
+  if (typeof useFirebase === 'undefined') {
     useFirebase = false;
   }
-  setLoading(false);
 }
 
 // ─── Firestore helpers ───
 async function fsGetDoc(col, docId, forceServer=false) {
   try {
     const opts = forceServer ? { source: "server" } : {};
-    const snap = await db.collection(col).doc(docId).get(opts);
+    // Add timeout to prevent hanging
+    const snap = await promiseWithTimeout(
+      db.collection(col).doc(docId).get(opts),
+      forceServer ? 8000 : 5000 // 8s for server, 5s for cache
+    );
     return snap.exists ? { id: snap.id, ...snap.data() } : null;
   } catch(e) {
-    // Fall back to cache if server unreachable
-    const snap = await db.collection(col).doc(docId).get();
-    return snap.exists ? { id: snap.id, ...snap.data() } : null;
+    // Fall back to cache if server fails (only if we were trying server)
+    if (forceServer) {
+      try {
+        const snap = await promiseWithTimeout(
+          db.collection(col).doc(docId).get(),
+          5000 // 5 second timeout for cache fallback
+        );
+        return snap.exists ? { id: snap.id, ...snap.data() } : null;
+      } catch(cacheError) {
+        // If cache also fails, return null (let caller handle error)
+        console.warn(`fsGetDoc fallback failed: ${cacheError.message}`);
+        return null;
+      }
+    } else {
+      // We were already trying cache, just return null on failure
+      console.warn(`fsGetDoc cache lookup failed: ${e.message}`);
+      return null;
+    }
   }
 }
 async function fsSetDoc(col, docId, data) {
   await db.collection(col).doc(docId).set(data, { merge: true });
 }
 async function fsGetAll(col) {
-  const snap = await db.collection(col).get();
+  try {
+    // Add timeout to prevent hanging
+    const snap = await promiseWithTimeout(
+      db.collection(col).get(),
+      10000 // 10 second timeout for collection fetch
+    );
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch(e) {
+    console.warn(`fsGetAll failed: ${e.message}`);
+    return []; // Return empty array on failure
+  }
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 async function fsDeleteDoc(col, docId) {
@@ -1228,7 +1425,65 @@ const LS = {
   set: (k,v) => localStorage.setItem(k, JSON.stringify(v)),
 };
 
+// ─── Promise Timeout Helper ───
+// Returns a promise that rejects if the input promise doesn't settle within ms milliseconds
+function promiseWithTimeout(promise, ms) {
+    // Create a promise that rejects in <ms> milliseconds
+    const timer = new Promise((resolve, reject) => {
+        setTimeout(() => reject(new Error(`Operation timed out after ${ms}ms`)), ms);
+    });
+    // Return a race between the original promise and the timer
+    return Promise.race([
+        promise,
+        timer
+    ]);
+}
+
+// Alternative: a version that resolves with a special value on timeout (for cases where we want to handle timeout gracefully)
+function promiseWithTimeoutOrDefault(promise, ms, defaultValue) {
+    return promiseWithTimeout(promise, ms).catch(() => defaultValue);
+}
+
+
 // ─── Unified DB API ───
+// Categories the admin sets a default amount for, per year (6 categories).
+// "Exam fees with fine", "No dues form" and "Miscellaneous" are ad-hoc / variable
+// amounts and intentionally have no preset default.
+const FEE_DEFAULT_CATEGORIES = [
+  { key: "App",      label: "Application Fee" },
+  { key: "Tuition",  label: "Tuition Fee" },
+  { key: "Record",   label: "Record Note" },
+  { key: "Exam",     label: "Exam Fee" },
+  { key: "Id",       label: "ID card" },
+  { key: "Book",     label: "Book" }
+];
+// The 3 ad-hoc / variable-amount categories from the student "Payment For"
+// dropdown. They have no *global* admin default (see note above), but the
+// per-student fee modal still lets the admin set an individual price for
+// them if needed — same as any other category.
+const AD_HOC_FEE_CATEGORIES = [
+  { key: "ExamFine", label: "Exam fees with fine" },
+  { key: "NoDues",   label: "No dues form" },
+  { key: "Misc",     label: "Miscellaneous" }
+];
+// Every category shown on the student payment page, in the same order as
+// that dropdown — used for the per-student fee editor and the payment cap lookup.
+const ALL_FEE_CATEGORIES = [
+  FEE_DEFAULT_CATEGORIES[0], FEE_DEFAULT_CATEGORIES[1], FEE_DEFAULT_CATEGORIES[2], FEE_DEFAULT_CATEGORIES[3],
+  AD_HOC_FEE_CATEGORIES[0], AD_HOC_FEE_CATEGORIES[1], AD_HOC_FEE_CATEGORIES[2],
+  FEE_DEFAULT_CATEGORIES[4], FEE_DEFAULT_CATEGORIES[5]
+];
+function defaultFeeSettings() {
+  const s = { upiId:"", accNo:"" };
+  [1,2,3].forEach(yr => FEE_DEFAULT_CATEGORIES.forEach(c => { s["defFee"+yr+c.key] = 0; }));
+  return s;
+}
+// Sum of all category defaults for a given year (1, 2 or 3) — this is the
+// student's total due amount for that year.
+function sumYearDefaultFees(settings, yr) {
+  return FEE_DEFAULT_CATEGORIES.reduce((sum, c) => sum + (settings["defFee"+yr+c.key] || 0), 0);
+}
+
 const DB = {
   async getStudents() {
     if (useFirebase) {
@@ -1263,9 +1518,9 @@ const DB = {
   async getSettings() {
     if (useFirebase) {
       const s = await fsGetDoc("config","settings");
-      return s || { upiId:"", accNo:"", defFee1:0, defFee2:0, defFee3:0 };
+      return s || defaultFeeSettings();
     }
-    return LS.get("ppt_settings") || { upiId:"", accNo:"", defFee1:0, defFee2:0, defFee3:0 };
+    return LS.get("ppt_settings") || defaultFeeSettings();
   },
   async setSettings(s) {
     if (useFirebase) {
@@ -1392,6 +1647,9 @@ function updateHeader() {
 
 // ─── Non-negative enforcement ───
 function enforceNonNeg(el) {
+  // Strip leading zeros (e.g. "0120" -> "120") so typing over a 0 placeholder
+  // doesn't leave a stray zero in front of what was typed.
+  if (/^0+\d/.test(el.value)) el.value = el.value.replace(/^0+/, "");
   const v = parseFloat(el.value);
   if (!isNaN(v) && v < 0) el.value = 0;
 }
@@ -1651,6 +1909,7 @@ async function doRegister() {
     address:       v("rAddress"),
     mobile:        v("rMobile"),
     email:         v("rEmail"),
+    password:      v("rPwd"),
     fatherName:    v("rFatherName"),
     fatherMobile:  v("rFatherMobile"),
     motherName:    v("rMotherName"),
@@ -1704,7 +1963,8 @@ async function doRegister() {
       if (parentTabFields.includes(field.key)) switchRegSubtab("parent");
       // Scroll to the field
       const el = document.getElementById("r" + field.key.charAt(0).toUpperCase() + field.key.slice(1))
-               || document.getElementById("r" + field.key);
+               || document.getElementById("r" + field.key)
+               || (field.key === "password" ? document.getElementById("rPwd") : null);
       if (el) { el.scrollIntoView({ behavior:"smooth", block:"center" }); el.focus(); }
       return;
     }
@@ -1786,9 +2046,9 @@ async function doRegister() {
     }
     const settings = await DB.getSettings();
     f.fees = {
-      year1: { due: Math.max(0, settings.defFee1||0), paid: 0 },
-      year2: { due: Math.max(0, settings.defFee2||0), paid: 0 },
-      year3: { due: Math.max(0, settings.defFee3||0), paid: 0 },
+      year1: { due: Math.max(0, sumYearDefaultFees(settings,1)), paid: 0 },
+      year2: { due: Math.max(0, sumYearDefaultFees(settings,2)), paid: 0 },
+      year3: { due: Math.max(0, sumYearDefaultFees(settings,3)), paid: 0 },
     };
 
     // Store only the password hash — never the raw password
@@ -1821,7 +2081,7 @@ async function checkAndIncrementYear(stu) {
   // Activate the new year's fees (copy from default settings if not yet set)
   try {
     const settings = await DB.getSettings();
-    const feeMap = { 1: settings.defFee1||0, 2: settings.defFee2||0, 3: settings.defFee3||0 };
+    const feeMap = { 1: sumYearDefaultFees(settings,1), 2: sumYearDefaultFees(settings,2), 3: sumYearDefaultFees(settings,3) };
     const yKey = ["year1","year2","year3"][yn-1];
     if (!stu.fees) stu.fees = { year1:{due:0,paid:0}, year2:{due:0,paid:0}, year3:{due:0,paid:0} };
     // Only set if not already customised (don't overwrite manually-set fees)
@@ -1861,10 +2121,12 @@ async function renderStudentDash() {
   document.getElementById("sDashSubtitle").textContent = "Pallavan Polytechnic College · " + s.course;
   document.getElementById("sAcadYear").textContent = "Academic Year " + s.admYear + "–" + (parseInt(s.admYear)+1);
 
-  // Store UPI globally for modal use
+  // Store settings globally — UPI id for modal use, full object for
+  // per-category default fee lookups in getMaxDue()/updateAmountHint()
   try {
     const settings = await DB.getSettings();
     window._portalUpiId = settings.upiId || "";
+    window._feeSettings = settings;
   } catch(e) {}
 
   const f = s.fees || { year1:{due:0,paid:0}, year2:{due:0,paid:0}, year3:{due:0,paid:0} };
@@ -1987,23 +2249,56 @@ let _qrInstance = null;
 let _currentUpiAmt = 0;
 let _currentUpiFor = "";
 
+// Fee categories that draw against the student's current-year due amount.
+// The remaining categories (Exam fees with fine, No dues form, Miscellaneous)
+// are free-form, ad-hoc amounts with no preset default / cap.
+const DUE_CAPPED_FEE_CATEGORIES = ["Application Fee","Tuition Fee","Record Note","Exam Fee","Exam fees with fine","No dues form","Miscellaneous","ID card","Book"];
+
+// Minimum amount a student must pay in a single transaction.
+// Exception: if the category has an admin-set due/max that is itself less
+// than this minimum, the required amount is capped down to that due amount
+// instead (so a student is never blocked from clearing a small balance).
+const MIN_PAYMENT_AMOUNT = 1000;
+
+// The amount payable for a capped category is this student's own price for
+// that category (if the admin has customised it for them individually via
+// the student modal), otherwise the global admin default for that category
+// and year (e.g. "ID card" = ₹150) — but never more than what's actually
+// still outstanding for the year overall (so if the year is nearly cleared,
+// a student can't overpay past the total due).
+// Returns null when there's nothing category-specific to cap against —
+// either an ad-hoc category (Exam fees with fine, No dues form, Miscellaneous)
+// or a capped category with no price set (student-specific or global). In
+// both cases the field behaves as free-entry rather than showing/using
+// another category's amount.
+function computeCategoryDue(forVal) {
+  if (!DUE_CAPPED_FEE_CATEGORIES.includes(forVal)) return null;
+  const s = currentUser; if (!s) return null;
+
+  const cat = ALL_FEE_CATEGORIES.find(c => c.label === forVal);
+  if (!cat) return null;
+
+  const yearMap = {"1st Year":1,"2nd Year":2,"3rd Year":3};
+  const yn = yearMap[s.studyYear] || 1;
+  const yKey = ["year1","year2","year3"][yn-1];
+
+  let catAmt = s.feeCategories?.[yKey]?.[cat.key];
+  if (catAmt === undefined || catAmt === null) {
+    const settings = window._feeSettings;
+    if (!settings) return null; // settings not loaded yet — treat as uncapped for now
+    catAmt = settings["defFee"+yn+cat.key] || 0;
+  }
+  if (catAmt <= 0) return null; // no price configured for this category — don't cap
+
+  const f = s.fees || {};
+  const yearRemaining = Math.max(0,(f[yKey]?.due||0)-(f[yKey]?.paid||0));
+  return Math.min(catAmt, yearRemaining);
+}
+
 // ── Amount hint, cap & auto-fill ──
 function getMaxDue() {
-  const s = currentUser; if (!s) return null;
   const forVal = document.getElementById("sPayFor")?.value;
-  const f = s.fees || {};
-  const yearMap = {"1st Year":1,"2nd Year":2,"3rd Year":3};
-  const yn   = yearMap[s.studyYear] || 1;
-  const yKey = ["year1","year2","year3"][yn-1];
-  if (forVal === "Current Year Fees") {
-    return Math.max(0,(f[yKey]?.due||0)-(f[yKey]?.paid||0));
-  } else if (forVal === "Arrear / Previous Dues") {
-    let a = 0;
-    if (yn >= 2) a += Math.max(0,(f.year1.due||0)-(f.year1.paid||0));
-    if (yn >= 3) a += Math.max(0,(f.year2.due||0)-(f.year2.paid||0));
-    return a;
-  }
-  return null; // exam/misc — no cap
+  return computeCategoryDue(forVal);
 }
 
 function capToMaxDue(el) {
@@ -2030,11 +2325,12 @@ function fillMaxDue() {
   updateAmountHint();
 }
 
-function clearPayAmt() {
-  document.getElementById("sPayAmount").value = "";
-  document.getElementById("amountHint").style.display = "none";
+function onPayForChange() {
+  const el = document.getElementById("sPayAmount");
+  el.value = "";
+  el.disabled = false;
   clearAlert("sPayAlert");
-  updateAmountHint();
+  updateAmountHint(); // will re-lock + auto-fill if the new category's due is under the minimum
 }
 
 function updateAmountHint() {
@@ -2046,29 +2342,44 @@ function updateAmountHint() {
   const yKey = ["year1","year2","year3"][yn-1];
 
   let maxAmt = null, hintMsg = "", hintType = "info";
+  const amountEl = document.getElementById("sPayAmount");
+  const payFullBtn = document.getElementById("btnPayFull");
 
-  if (forVal === "Current Year Fees") {
-    const due = Math.max(0,(f[yKey]?.due||0)-(f[yKey]?.paid||0));
+  const due = computeCategoryDue(forVal);
+
+  if (due !== null) {
     maxAmt   = due;
-    hintMsg  = due > 0
-      ? `<span>📌</span><span>Maximum payable for <strong>${s.studyYear}</strong>: <strong style="font-size:1rem">₹${fmt(due)}</strong></span>`
-      : `<span>✅</span><span>Your ${s.studyYear} fees are fully cleared!</span>`;
-    hintType = due > 0 ? "warning" : "success";
-  } else if (forVal === "Arrear / Previous Dues") {
-    let arrear = 0;
-    if (yn >= 2) arrear += Math.max(0,(f.year1.due||0)-(f.year1.paid||0));
-    if (yn >= 3) arrear += Math.max(0,(f.year2.due||0)-(f.year2.paid||0));
-    maxAmt   = arrear;
-    hintMsg  = arrear > 0
-      ? `<span>📌</span><span>Total arrear dues: <strong style="font-size:1rem">₹${fmt(arrear)}</strong></span>`
-      : `<span>✅</span><span>No arrear dues pending!</span>`;
-    hintType = arrear > 0 ? "warning" : "success";
-  } else if (forVal === "Examination Fees") {
-    hintMsg = `<span>ℹ️</span><span>Enter the examination fee amount as communicated by the college.</span>`;
-    hintType = "info";
-  } else if (forVal === "Miscellaneous") {
-    hintMsg = `<span>ℹ️</span><span>Enter the miscellaneous fee amount as communicated by the college.</span>`;
-    hintType = "info";
+    const minReq = Math.min(MIN_PAYMENT_AMOUNT, due);
+
+    if (due > 0 && due < MIN_PAYMENT_AMOUNT) {
+      // Balance is below the usual ₹1000 minimum, so there's only one valid
+      // amount (the full balance) — auto-fill it and lock the field instead
+      // of asking the student to type it in.
+      amountEl.value = due;
+      amountEl.disabled = true;
+      if (payFullBtn) payFullBtn.style.display = "none";
+      hintMsg  = `<span>✅</span><span><strong>${forVal}</strong> amount for <strong>${s.studyYear}</strong> is <strong style="font-size:1rem">₹${fmt(due)}</strong></span>`;
+      hintType = "success";
+    } else if (due === 0) {
+      // Nothing left to pay for this category — nothing to type either.
+      amountEl.value = "";
+      amountEl.disabled = true;
+      if (payFullBtn) payFullBtn.style.display = "none";
+      hintMsg  = `<span>✅</span><span><strong>${forVal}</strong> for <strong>${s.studyYear}</strong> is fully cleared!</span>`;
+      hintType = "success";
+    } else {
+      amountEl.disabled = false;
+      if (payFullBtn) payFullBtn.style.display = "";
+      hintMsg  = `<span>📌</span><span>Minimum payment: <strong>₹${fmt(minReq)}</strong></span>`;
+      hintType = "warning";
+    }
+  } else {
+    amountEl.disabled = false;
+    if (payFullBtn) payFullBtn.style.display = "";
+    if (forVal) {
+      hintMsg = `<span>📌</span><span>Minimum payment: <strong>₹${fmt(MIN_PAYMENT_AMOUNT)}</strong></span>`;
+      hintType = "warning";
+    }
   }
 
   // Also set the input max attribute for browser-level validation
@@ -2099,10 +2410,15 @@ function switchAdminTab(tab) {
 
 let _analyticsMode = "date";
 const ANALYTICS_CATEGORY_COLORS = {
-  "Current Year Fees":      "#3D1A6E",
-  "Arrear / Previous Dues": "#C9A84C",
-  "Examination Fees":       "#5E2EA0",
-  "Miscellaneous":          "#8B1A1A"
+  "Application Fee":     "#3D1A6E",
+  "Tuition Fee":         "#C9A84C",
+  "Record Note":         "#2E7D32",
+  "Exam Fee":            "#5E2EA0",
+  "Exam fees with fine": "#B45309",
+  "No dues form":        "#0F766E",
+  "Miscellaneous":       "#8B1A1A",
+  "ID card":             "#1D4ED8",
+  "Book":                "#9D174D"
 };
 
 function pad2(n) { return String(n).padStart(2, "0"); }
@@ -2254,8 +2570,12 @@ function renderAnalytics() {
   if (elCount) elCount.textContent = paymentCount;
   if (elRegs)  elRegs.textContent  = newRegs;
 
-  // Render the pie chart (category breakdown for the selected period)
-  renderAnalyticsPie(catTotals, totalCollected);
+  // Render the category breakdown legend for the selected period
+  renderAnalyticsLegend(catTotals, totalCollected);
+  renderAnalyticsPieChart(catTotals, totalCollected);
+
+  // Render the detailed list of students who paid within the selected period
+  renderAnalyticsPeriodDetails(startMs, endMs, caption);
 
   // --- NEW: Compute time series data for the graph ---
   // We will show the last 7 days/weeks/months/years based on the current analytics mode
@@ -2282,7 +2602,7 @@ function renderAnalytics() {
           }
         });
       });
-      const label = formatDate(startOfDay); // e.g., e.g., 'Jul 22''
+      const label = startOfDay.toLocaleDateString("en-IN",{weekday:"short",day:"2-digit",month:"short"}); // e.g., 'Wed, 22 Jul'
       timeSeriesData.push({
         label: label,
         amount: total,
@@ -2293,8 +2613,8 @@ function renderAnalytics() {
     // Reverse so that the most recent day is last (so the chart shows oldest to newest left to right)
     timeSeriesData.reverse();
   } else if (mode === "week") {
-    // Last 4 weeks (each week starting on Monday)
-    for (let i = 0; i < 4; i++) {
+    // Last 8 weeks (each week starting on Monday)
+    for (let i = 0; i < 8; i++) {
       const weekStart = new Date(now);
       const day = weekStart.getDay();
       const diff = (day === 0 ? -6 : 1) - day; // Monday is 1, so adjust to Monday
@@ -2312,7 +2632,9 @@ function renderAnalytics() {
           }
         });
       });
-      const label = `${formatDate(weekStart)} – ${formatDate(new Date(weekEnd.getTime()-1))}`;
+      const weekEndDisplay = new Date(weekEnd.getTime()-1);
+      const dOpts = {day:"2-digit",month:"short"};
+      const label = `${weekStart.toLocaleDateString("en-IN",dOpts)} \u2013 ${weekEndDisplay.toLocaleDateString("en-IN",dOpts)}`;
       timeSeriesData.push({
         label: label,
         amount: total,
@@ -2397,39 +2719,60 @@ function renderAnalyticsBars(catTotals, total) {
   }).join("");
 }
 
-function renderAnalyticsPie(catTotals, total) {
-  const wrap = document.getElementById("analyticsPieWrap");
-  const legend = document.getElementById("analyticsLegend");
-  if (!wrap || !legend) return;
-  const entries = Object.entries(catTotals).filter(([,v]) => v > 0);
+// Donut-style pie chart showing the fee-category breakdown for the selected period.
+function renderAnalyticsPieChart(catTotals, total) {
+  const wrap = document.getElementById("analyticsPieChart");
+  if (!wrap) return;
+  const entries = Object.entries(catTotals).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
 
   if (total <= 0 || entries.length === 0) {
-    wrap.innerHTML = `<svg viewBox="0 0 200 200" width="200" height="200">
-      <circle cx="100" cy="100" r="80" fill="none" stroke="#E8E0F0" stroke-width="28"/>
-      <text x="100" y="105" text-anchor="middle" font-family="DM Sans, sans-serif" font-size="13" fill="#7A7A9A">No data</text>
-    </svg>`;
-    legend.innerHTML = '<p class="text-muted" style="font-size:0.85rem">No confirmed payments in this period.</p>';
+    wrap.innerHTML = '<p class="text-muted" style="font-size:0.85rem;padding:10px 0">No confirmed payments in this period.</p>';
     return;
   }
 
-  const R = 80, C = 2*Math.PI*R;
-  let offset = 0;
-  const circles = entries.map(([label, amt]) => {
-    const frac = amt/total;
-    const dash = frac*C;
-    const color = ANALYTICS_CATEGORY_COLORS[label] || "#5E2EA0";
-    const circle = `<circle cx="100" cy="100" r="${R}" fill="none" stroke="${color}" stroke-width="28"
-      stroke-dasharray="${dash} ${C-dash}" stroke-dashoffset="${-offset}" transform="rotate(-90 100 100)"/>`;
-    offset += dash;
-    return circle;
-  }).join("");
+  const size = 220, r = 100, cx = size/2, cy = size/2, holeR = r*0.56;
+  let angleStart = -90; // 12 o'clock
+  let slices = "";
 
-  wrap.innerHTML = `<svg viewBox="0 0 200 200" width="200" height="200">
-    ${circles}
-    <circle cx="100" cy="100" r="52" fill="var(--white)"/>
-    <text x="100" y="96" text-anchor="middle" font-family="Cinzel, serif" font-size="14" font-weight="700" fill="var(--royal)">₹${fmt(total)}</text>
-    <text x="100" y="114" text-anchor="middle" font-family="DM Sans, sans-serif" font-size="10" fill="#7A7A9A">Total</text>
+  if (entries.length === 1) {
+    const [label, amt] = entries[0];
+    const color = ANALYTICS_CATEGORY_COLORS[label] || "#5E2EA0";
+    slices = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}"><title>${escHtml(label)}: ₹${fmt(amt)} (100%)</title></circle>`;
+  } else {
+    entries.forEach(([label, amt]) => {
+      const pct = amt / total;
+      const angle = pct * 360;
+      const angleEnd = angleStart + angle;
+      const color = ANALYTICS_CATEGORY_COLORS[label] || "#5E2EA0";
+      const large = angle > 180 ? 1 : 0;
+      const x1 = cx + r*Math.cos(angleStart*Math.PI/180);
+      const y1 = cy + r*Math.sin(angleStart*Math.PI/180);
+      const x2 = cx + r*Math.cos(angleEnd*Math.PI/180);
+      const y2 = cy + r*Math.sin(angleEnd*Math.PI/180);
+      slices += `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${large} 1 ${x2},${y2} Z" fill="${color}" stroke="#fff" stroke-width="1.5">
+        <title>${escHtml(label)}: ₹${fmt(amt)} (${(pct*100).toFixed(1)}%)</title>
+      </path>`;
+      angleStart = angleEnd;
+    });
+  }
+
+  wrap.innerHTML = `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" style="display:block;margin:0 auto">
+    ${slices}
+    <circle cx="${cx}" cy="${cy}" r="${holeR}" fill="var(--white)"/>
+    <text x="${cx}" y="${cy-6}" text-anchor="middle" font-size="11" fill="#7A7A9A" font-family="'DM Sans',sans-serif">Total</text>
+    <text x="${cx}" y="${cy+15}" text-anchor="middle" font-size="15" font-weight="700" fill="#3D1A6E" font-family="'Cinzel',serif">₹${fmt(total)}</text>
   </svg>`;
+}
+
+function renderAnalyticsLegend(catTotals, total) {
+  const legend = document.getElementById("analyticsLegend");
+  if (!legend) return;
+  const entries = Object.entries(catTotals).filter(([,v]) => v > 0);
+
+  if (total <= 0 || entries.length === 0) {
+    legend.innerHTML = '<p class="text-muted" style="font-size:0.85rem">No confirmed payments in this period.</p>';
+    return;
+  }
 
   legend.innerHTML = entries
     .sort((a,b) => b[1]-a[1])
@@ -2444,41 +2787,127 @@ function renderAnalyticsPie(catTotals, total) {
     }).join("");
 }
 
+// Rounds a max value up to a "nice" number and picks a nice step size for axis gridlines
+function niceAxisScale(maxVal, targetTicks) {
+    targetTicks = targetTicks || 5;
+    if (maxVal <= 0) return { niceMax: 100, step: 20, ticks: 5 };
+    const rawStep = maxVal / targetTicks;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
+    const residual = rawStep / magnitude;
+    let niceStep;
+    if (residual <= 1) niceStep = magnitude;
+    else if (residual <= 2) niceStep = 2 * magnitude;
+    else if (residual <= 5) niceStep = 5 * magnitude;
+    else niceStep = 10 * magnitude;
+    const niceMax = Math.ceil(maxVal / niceStep) * niceStep;
+    const ticks = Math.round(niceMax / niceStep);
+    return { niceMax, step: niceStep, ticks };
+}
+
+// Splits a long axis label into two lines (breaking on the nearest space to the middle)
+function splitAxisLabel(label, maxLen) {
+    maxLen = maxLen || 11;
+    if (!label || label.length <= maxLen) return [label || ""];
+    const mid = Math.floor(label.length / 2);
+    let idx = label.indexOf(" ", mid);
+    if (idx === -1) idx = label.lastIndexOf(" ", mid);
+    if (idx === -1) return [label];
+    return [label.slice(0, idx).trim(), label.slice(idx + 1).trim()];
+}
+
 function renderTimeSeriesBarChart(timeSeriesData) {
     const wrap = document.getElementById("analyticsBarChart");
     if (!wrap) return;
 
-    if (timeSeriesData.length === 0) {
-        wrap.innerHTML = '<p class="text-muted">No data for the selected period.</p>';
+    if (!timeSeriesData || timeSeriesData.length === 0) {
+        wrap.innerHTML = '<p class="text-muted" style="padding:20px 0">No data for the selected period.</p>';
         return;
     }
 
-    // Find the max amount for scaling
-    const maxAmount = Math.max(...timeSeriesData.map(d => d.amount));
+    const maxAmount = Math.max(...timeSeriesData.map(d => d.amount), 0);
+    const { niceMax, step, ticks } = niceAxisScale(maxAmount, 5);
 
-    wrap.innerHTML = timeSeriesData.map((data, index) => {
-        const widthPct = (data.amount / maxAmount * 100).toFixed(1);
-        const color = "#5E2EA0"; // default purple
-        return `<div class="analytics-bar-row" data-index="${index}" data-label="${escapeHtml(data.label)}" data-amount="${data.amount}" data-start="${data.start.getTime()}" data-end="${data.end.getTime()}">
-            <span class="analytics-bar-label">${escapeHtml(data.label)}</span>
-            <span class="analytics-bar-track"><span class="analytics-bar-fill" style="width:${widthPct}%;background:${color}"></span></span>
-            <span class="analytics-bar-amt">\u20B9${fmt(data.amount)}</span>
-        </div>';
-    }).join("");
+    const barCount = timeSeriesData.length;
+    const hasLongLabels = timeSeriesData.some(d => (d.label || "").length > 11);
+
+    const leftM = 82, rightM = 26, topM = 40;
+    const chartH = 240;
+    const slotW = 92;
+    const chartW = Math.max(barCount * slotW, 360);
+    const bottomM = (hasLongLabels ? 56 : 40) + 24; // extra room for axis title
+    const totalW = leftM + chartW + rightM;
+    const totalH = topM + chartH + bottomM;
+
+    const modeTitles = { date: "Days \u2192", week: "Weeks \u2192", month: "Months \u2192", year: "Years \u2192" };
+    const xTitle = modeTitles[typeof _analyticsMode !== "undefined" ? _analyticsMode : "date"] || "Period \u2192";
+
+    let svg = `<svg viewBox="0 0 ${totalW} ${totalH}" width="${totalW}" height="${totalH}" style="display:block;font-family:'DM Sans',sans-serif">
+      <defs>
+        <linearGradient id="tsBarGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#5E2EA0"/>
+          <stop offset="100%" stop-color="#3D1A6E"/>
+        </linearGradient>
+      </defs>`;
+
+    // Gridlines + y-axis value labels
+    for (let i = 0; i <= ticks; i++) {
+        const val = i * step;
+        const y = topM + chartH - (val / niceMax) * chartH;
+        svg += `<line x1="${leftM}" y1="${y}" x2="${leftM+chartW}" y2="${y}" stroke="${i===0 ? '#2A1050' : '#E8E0F0'}" stroke-width="${i===0 ? 1.6 : 1}"/>`;
+        svg += `<text x="${leftM-10}" y="${y+4}" text-anchor="end" font-size="11" fill="#7A7A9A">${fmt(val)}</text>`;
+    }
+
+    // Y-axis line with arrowhead
+    svg += `<line x1="${leftM}" y1="${topM-14}" x2="${leftM}" y2="${topM+chartH}" stroke="#2A1050" stroke-width="1.6"/>`;
+    svg += `<polygon points="${leftM-4},${topM-14} ${leftM+4},${topM-14} ${leftM},${topM-23}" fill="#2A1050"/>`;
+    // Y-axis title (rotated)
+    svg += `<text x="20" y="${topM+chartH/2}" text-anchor="middle" font-size="12" font-weight="600" fill="#C9A84C" transform="rotate(-90 20 ${topM+chartH/2})">Revenue Collected (\u20B9)</text>`;
+
+    // X-axis line with arrowhead
+    const xAxisEnd = leftM + chartW + 14;
+    const xAxisY = topM + chartH;
+    svg += `<line x1="${leftM}" y1="${xAxisY}" x2="${xAxisEnd}" y2="${xAxisY}" stroke="#2A1050" stroke-width="1.6"/>`;
+    svg += `<polygon points="${xAxisEnd},${xAxisY-4} ${xAxisEnd},${xAxisY+4} ${xAxisEnd+8},${xAxisY}" fill="#2A1050"/>`;
+    // X-axis title
+    svg += `<text x="${leftM+chartW/2}" y="${totalH-6}" text-anchor="middle" font-size="12.5" font-weight="600" fill="#C9A84C">${xTitle}</text>`;
+
+    // Bars
+    timeSeriesData.forEach((d, i) => {
+        const slotX = leftM + i * slotW;
+        const barW = slotW * 0.56;
+        const barX = slotX + (slotW - barW) / 2;
+        const barH = niceMax > 0 ? (d.amount / niceMax) * chartH : 0;
+        const barY = topM + chartH - barH;
+        const fill = d.amount > 0 ? "url(#tsBarGrad)" : "#E0DAEE";
+        const labelLines = splitAxisLabel(d.label);
+
+        svg += `<rect class="ts-bar" x="${barX}" y="${barY}" width="${barW}" height="${Math.max(barH,0)}" rx="3" fill="${fill}"
+          data-start="${d.start.getTime()}" data-end="${d.end.getTime()}" data-label="${escHtml(d.label)}">
+          <title>Click to see who paid \u2014 ${escHtml(d.label)}</title>
+        </rect>`;
+        svg += `<text x="${barX+barW/2}" y="${barY-8}" text-anchor="middle" font-size="12" font-weight="700" fill="#3D1A6E">\u20B9${fmt(d.amount)}</text>`;
+        labelLines.forEach((line, li) => {
+            svg += `<text x="${slotX+slotW/2}" y="${xAxisY+20+li*15}" text-anchor="middle" font-size="11.5" fill="#4A4A6A">${escHtml(line)}</text>`;
+        });
+    });
+
+    svg += `</svg>`;
+    wrap.innerHTML = svg;
 
     // Add click event listener to each bar
-    wrap.querySelectorAll(".analytics-bar-row").forEach(bar => {
+    wrap.querySelectorAll(".ts-bar").forEach(bar => {
         bar.addEventListener("click", function() {
             const startTime = parseInt(this.getAttribute("data-start"));
             const endTime = parseInt(this.getAttribute("data-end"));
-            showTimeSeriesDetailsForPeriod(startTime, endTime);
+            const label = this.getAttribute("data-label");
+            showTimeSeriesDetailsForPeriod(startTime, endTime, label);
         });
     });
 }
 
-function showTimeSeriesDetailsForPeriod(startTime, endTime) {
+// Returns confirmed payments (with their student record) whose date falls within [startTime, endTime)
+function getConfirmedPaymentsInRange(startTime, endTime) {
     const students = window._adminStudentsCache || [];
-    // Filter payments that are confirmed and within the time range
     const payments = [];
     students.forEach(student => {
         (student.payments || []).forEach(payment => {
@@ -2490,18 +2919,110 @@ function showTimeSeriesDetailsForPeriod(startTime, endTime) {
             }
         });
     });
-
-    // Sort by date descending
+    // Sort by date/time descending (most recent first)
     payments.sort((a, b) => new Date(b.payment.date) - new Date(a.payment.date));
+    return payments;
+}
+
+// Builds the summary + grouped table markup for a list of {student, payment} entries.
+// groupBy: "day" (default) groups rows under each calendar date; "month" groups rows
+// under each calendar month (used for Year view, where day-by-day would be too granular).
+function buildPaymentDetailsHTML(payments, groupBy) {
+    groupBy = groupBy === "month" ? "month" : "day";
+
+    if (!payments || payments.length === 0) {
+        return '<div class="detail-empty">💤 No confirmed payments were made in this period.</div>';
+    }
+
+    const totalAmount = payments.reduce((sum, item) => sum + (parseFloat(item.payment.amount) || 0), 0);
+    const uniqueStudents = new Set(payments.map(item => item.student.appId)).size;
+
+    // Group payments by calendar date or calendar month, preserving descending order
+    const groups = {};
+    const groupOrder = [];
+    payments.forEach(item => {
+        const d = new Date(item.payment.date);
+        const key = groupBy === "month"
+            ? d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0")
+            : d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+        if (!groups[key]) { groups[key] = []; groupOrder.push(key); }
+        groups[key].push(item);
+    });
+
+    let html = `<div class="detail-summary-row">
+        <div class="detail-summary-box"><div class="num">\u20B9${fmt(totalAmount)}</div><div class="lbl">Total Collected</div></div>
+        <div class="detail-summary-box"><div class="num">${payments.length}</div><div class="lbl">Payments</div></div>
+        <div class="detail-summary-box"><div class="num">${uniqueStudents}</div><div class="lbl">Students Paid</div></div>
+    </div>`;
+
+    groupOrder.forEach(key => {
+        const groupItems = groups[key];
+        const groupTotal = groupItems.reduce((s,it) => s + (parseFloat(it.payment.amount) || 0), 0);
+        let groupLabel;
+        if (groupBy === "month") {
+            const [y, m] = key.split("-").map(Number);
+            groupLabel = new Date(y, m-1, 1).toLocaleDateString("en-IN", {month:"long", year:"numeric"});
+        } else {
+            groupLabel = new Date(key + "T00:00:00").toLocaleDateString("en-IN",{weekday:"short",day:"2-digit",month:"short",year:"numeric"});
+        }
+
+        html += `<div class="date-group">
+            <div class="date-group-head">
+                <span class="dg-date">\u{1F4C5} ${groupLabel}</span>
+                <span class="dg-meta">${groupItems.length} payment${groupItems.length>1?"s":""} &middot; \u20B9${fmt(groupTotal)}</span>
+            </div>
+            <div class="table-wrap"><table>
+            <thead><tr><th>Student</th><th>Mobile</th><th>Fee Category</th>${groupBy==="month" ? "<th>Date</th>" : ""}<th>Time</th><th>Amount</th></tr></thead>
+            <tbody>`;
+        groupItems.forEach(item => {
+            const { student, payment } = item;
+            const payDate = new Date(payment.date);
+            const timeStr = payDate.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
+            const dateStr = payDate.toLocaleDateString("en-IN",{day:"2-digit",month:"short"});
+            html += `<tr>
+                <td>
+                    <div class="detail-student-name">${escHtml(student.name)}</div>
+                    <div class="detail-student-sub">${escHtml(student.appId)} &middot; ${escHtml(student.course||"\u2014")}${student.studyYear ? " &middot; "+escHtml(student.studyYear) : ""}</div>
+                </td>
+                <td class="muted">${escHtml(student.mobile||"\u2014")}</td>
+                <td>${escHtml(payment.forLabel||"\u2014")}</td>
+                ${groupBy==="month" ? `<td class="muted">${dateStr}</td>` : ""}
+                <td class="muted">${timeStr}</td>
+                <td><strong>\u20B9${fmt(payment.amount)}</strong></td>
+            </tr>`;
+        });
+        html += `</tbody></table></div></div>`;
+    });
+
+    return html;
+}
+
+// Renders the "who paid" detail list inline, directly under the graph, for whatever
+// day/week/month/year is currently selected via the analytics picker.
+function renderAnalyticsPeriodDetails(startMs, endMs, caption) {
+    const container = document.getElementById("analyticsPeriodDetails");
+    const titleEl = document.getElementById("analyticsPeriodDetailsTitle");
+    if (!container) return;
+    if (titleEl) titleEl.textContent = "Payment Details" + (caption ? " — " + caption : "");
+    const payments = getConfirmedPaymentsInRange(startMs, endMs);
+    // Year view spans a whole year, so group by month; every other view groups by day
+    const groupBy = _analyticsMode === "year" ? "month" : "day";
+    container.innerHTML = buildPaymentDetailsHTML(payments, groupBy);
+}
+
+function showTimeSeriesDetailsForPeriod(startTime, endTime, periodLabel) {
+    const payments = getConfirmedPaymentsInRange(startTime, endTime);
+    // If the clicked bar represents a full year, group its details by month instead of by day
+    const groupBy = _analyticsMode === "year" ? "month" : "day";
 
     // Create modal content
     const modal = document.createElement("div");
     modal.className = "overlay";
     modal.id = "timeSeriesDetailsModal";
     modal.innerHTML = `
-        <div class="modal">
+        <div class="modal modal-wide">
             <div class="modal-head">
-                <h2>Payment Details</h2>
+                <h2>Payment Details${periodLabel ? " — " + escHtml(periodLabel) : ""}</h2>
                 <button class="modal-close" onclick="closeTimeSeriesDetailsModal()">✕</button>
             </div>
             <div class="gold-bar"></div>
@@ -2514,24 +3035,7 @@ function showTimeSeriesDetailsForPeriod(startTime, endTime) {
 
     // Fill the content
     const contentDiv = document.getElementById("timeSeriesDetailsContent");
-    if (payments.length === 0) {
-        contentDiv.innerHTML = '<p class="text-muted">No payments found for this period.</p>';
-    } else {
-        let html = '<div class="table-wrap" style="border:none;box-shadow:none;border-radius:0"><table>';
-        html += '<thead><tr><th>Student</th><th>App ID</th><th>Amount</th><th>Date</th><th>For</th></tr></thead><tbody>';
-        payments.forEach(item => {
-            const { student, payment } = item;
-            html += `<tr>
-                <td style="font-weight:500">${escapeHtml(student.name)}</td>
-                <td class="muted">${escapeHtml(student.appId)}</td>
-                <td><strong>\u20B9${fmt(payment.amount)}</strong></td>
-                <td class="muted">${formatDate(payment.date)}</td>
-                <td>${escapeHtml(payment.forLabel)}</td>
-            </tr>`;
-        });
-        html += '</tbody></table></div>';
-        contentDiv.innerHTML = html;
-    }
+    contentDiv.innerHTML = buildPaymentDetailsHTML(payments, groupBy);
 
     // Show the modal
     modal.classList.add("open");
@@ -2613,32 +3117,29 @@ async function validatePayAmount(amt, forVal) {
     showAlert("sPayAlert","danger","Please enter a valid amount greater than ₹0.");
     return false;
   }
-  const s = currentUser;
-  const f = s.fees || {};
-  const yearMap = {"1st Year":1,"2nd Year":2,"3rd Year":3};
-  const yn   = yearMap[s.studyYear] || 1;
-  const yKey = ["year1","year2","year3"][yn-1];
 
-  if (forVal === "Current Year Fees") {
-    const due = Math.max(0,(f[yKey]?.due||0)-(f[yKey]?.paid||0));
+  const due = computeCategoryDue(forVal);
+  if (due !== null) {
     if (due === 0) {
-      showAlert("sPayAlert","warning","Your current year fees are already cleared. Nothing to pay.");
+      showAlert("sPayAlert","warning","This is already fully cleared. Nothing to pay.");
       return false;
     }
     if (amt > due) {
-      showAlert("sPayAlert","danger",`Amount cannot exceed your current year due of <strong>₹${fmt(due)}</strong>.`);
+      showAlert("sPayAlert","danger",`Amount cannot exceed <strong>₹${fmt(due)}</strong> for ${forVal}.`);
       return false;
     }
-  } else if (forVal === "Arrear / Previous Dues") {
-    let arrear = 0;
-    if (yn >= 2) arrear += Math.max(0,(f.year1.due||0)-(f.year1.paid||0));
-    if (yn >= 3) arrear += Math.max(0,(f.year2.due||0)-(f.year2.paid||0));
-    if (arrear === 0) {
-      showAlert("sPayAlert","warning","You have no arrear dues.");
+    // Minimum payment is ₹1000, unless the remaining due itself is smaller —
+    // in that case the due amount (admin-set max) becomes the required minimum.
+    const minReq = Math.min(MIN_PAYMENT_AMOUNT, due);
+    if (amt < minReq) {
+      showAlert("sPayAlert","danger",`Minimum payment amount is <strong>₹${fmt(minReq)}</strong>.`);
       return false;
     }
-    if (amt > arrear) {
-      showAlert("sPayAlert","danger",`Amount cannot exceed your total arrear dues of <strong>₹${fmt(arrear)}</strong>.`);
+  } else {
+    // No category-specific cap (ad-hoc category, or a capped category with
+    // no admin-set price) — still require the standard ₹1000 minimum.
+    if (amt < MIN_PAYMENT_AMOUNT) {
+      showAlert("sPayAlert","danger",`Minimum payment amount is <strong>₹${fmt(MIN_PAYMENT_AMOUNT)}</strong>.`);
       return false;
     }
   }
@@ -2821,9 +3322,7 @@ async function renderAdminDash() {
     // Populate settings display
     document.getElementById("viewUpiId").innerHTML    = settings.upiId    ? escHtml(settings.upiId)    : '<em class="text-muted">Not set</em>';
     document.getElementById("viewAccNo").innerHTML    = settings.accNo    ? escHtml(settings.accNo)    : '<em class="text-muted">Not set</em>';
-    document.getElementById("viewFee1").textContent   = "₹" + fmt(settings.defFee1||0);
-    document.getElementById("viewFee2").textContent   = "₹" + fmt(settings.defFee2||0);
-    document.getElementById("viewFee3").textContent   = "₹" + fmt(settings.defFee3||0);
+    renderFeeStructTables(settings);
     // Load academic year cutoff globally — sanitize against invalid day/month combos
     const _monthNames=["January","February","March","April","May","June","July","August","September","October","November","December"];
     let _cm = settings.acadCutoffMonth !== undefined ? settings.acadCutoffMonth : 5;
@@ -2850,10 +3349,6 @@ async function renderAdminDash() {
     // Populate edit fields too
     if (document.getElementById("adminUpiId"))    document.getElementById("adminUpiId").value    = settings.upiId||"";
     if (document.getElementById("adminAccNo"))    document.getElementById("adminAccNo").value    = settings.accNo||"";
-    if (document.getElementById("defFee1"))       document.getElementById("defFee1").value       = settings.defFee1||"";
-    if (document.getElementById("defFee2"))       document.getElementById("defFee2").value       = settings.defFee2||"";
-    if (document.getElementById("defFee3"))       document.getElementById("defFee3").value       = settings.defFee3||"";
-
     // Pending approvals
     const pending = [];
     students.forEach(s => {
@@ -2921,7 +3416,11 @@ function renderStudentTable(cachedStudents) {
         <td class="muted">${escHtml(s.mobile||"")}</td>
         <td><strong>₹${fmt(totalOutstanding)}</strong></td>
         <td>${totalOutstanding===0?'<span class="badge badge-green">Cleared</span>':hasPend?'<span class="badge badge-gold">Pay. Pending</span>':'<span class="badge badge-red">Due</span>'}</td>
-        <td><button class="btn btn-primary btn-sm" onclick="openStudentModal('${escAttr(s.appId)}')">View / Edit</button></td>
+        <td>
+          <button class="btn btn-primary btn-sm" onclick="openStudentModal('${escAttr(s.appId)}')">View / Edit</button>
+          &nbsp;
+          <button class="btn btn-gold btn-sm" onclick="openAdminPayModal('${escAttr(s.appId)}')" title="Record a cash / offline payment for this student">💵 Pay</button>
+        </td>
       </tr>`;
     }).join("");
   };
@@ -3008,12 +3507,45 @@ async function savePaymentSettings() {
   setTimeout(() => { msg.style.display = "none"; }, 2500);
 }
 
+// Build the read-only view table + editable table for the per-category,
+// per-year default fee structure.
+function renderFeeStructTables(settings) {
+  const viewBody = document.getElementById("feeStructViewBody");
+  const editBody = document.getElementById("feeStructEditBody");
+  if (viewBody) {
+    viewBody.innerHTML = FEE_DEFAULT_CATEGORIES.map(c => `
+      <tr>
+        <td style="padding:4px">${c.label}</td>
+        <td style="text-align:right;padding:4px">₹${fmt(settings["defFee1"+c.key]||0)}</td>
+        <td style="text-align:right;padding:4px">₹${fmt(settings["defFee2"+c.key]||0)}</td>
+        <td style="text-align:right;padding:4px">₹${fmt(settings["defFee3"+c.key]||0)}</td>
+      </tr>`).join("");
+  }
+  if (editBody) {
+    editBody.innerHTML = FEE_DEFAULT_CATEGORIES.map(c => `
+      <tr>
+        <td style="padding:4px">${c.label}</td>
+        <td style="padding:4px"><input type="number" id="defFee1${c.key}" class="form-control" placeholder="0" min="0" step="1" value="${settings["defFee1"+c.key]||""}" oninput="enforceNonNeg(this)"></td>
+        <td style="padding:4px"><input type="number" id="defFee2${c.key}" class="form-control" placeholder="0" min="0" step="1" value="${settings["defFee2"+c.key]||""}" oninput="enforceNonNeg(this)"></td>
+        <td style="padding:4px"><input type="number" id="defFee3${c.key}" class="form-control" placeholder="0" min="0" step="1" value="${settings["defFee3"+c.key]||""}" oninput="enforceNonNeg(this)"></td>
+      </tr>`).join("");
+  }
+  document.getElementById("viewFee1").textContent = "₹" + fmt(sumYearDefaultFees(settings,1));
+  document.getElementById("viewFee2").textContent = "₹" + fmt(sumYearDefaultFees(settings,2));
+  document.getElementById("viewFee3").textContent = "₹" + fmt(sumYearDefaultFees(settings,3));
+}
+
 async function saveDefaultFees() {
-  const fee1 = Math.max(0,parseFloat(document.getElementById("defFee1").value)||0);
-  const fee2 = Math.max(0,parseFloat(document.getElementById("defFee2").value)||0);
-  const fee3 = Math.max(0,parseFloat(document.getElementById("defFee3").value)||0);
   const s = await DB.getSettings();
-  s.defFee1=fee1; s.defFee2=fee2; s.defFee3=fee3;
+  [1,2,3].forEach(yr => {
+    FEE_DEFAULT_CATEGORIES.forEach(c => {
+      const el = document.getElementById("defFee"+yr+c.key);
+      s["defFee"+yr+c.key] = el ? Math.max(0, parseFloat(el.value)||0) : (s["defFee"+yr+c.key]||0);
+    });
+  });
+  const fee1 = sumYearDefaultFees(s,1);
+  const fee2 = sumYearDefaultFees(s,2);
+  const fee3 = sumYearDefaultFees(s,3);
   setLoading(true,"Saving fee structure & updating all students…");
   await DB.setSettings(s);
 
@@ -3032,9 +3564,7 @@ async function saveDefaultFees() {
   } catch(e) { console.warn("Fee propagation error:", e); }
 
   setLoading(false);
-  document.getElementById("viewFee1").textContent="₹"+fmt(fee1);
-  document.getElementById("viewFee2").textContent="₹"+fmt(fee2);
-  document.getElementById("viewFee3").textContent="₹"+fmt(fee3);
+  renderFeeStructTables(s);
   // Show saved — stay in edit mode until user clicks Cancel
   const msg = document.getElementById("feeSavedMsg");
   msg.style.display = "block";
@@ -3053,17 +3583,9 @@ async function confirmPayment(appId, payIdx) {
     // Generate receipt number
     p.receiptNo = "PPT" + new Date().getFullYear() + String(Date.now()).slice(-6);
 
-    const forLabel = (p.forLabel||"").toLowerCase();
-    if (forLabel.includes("arrear")||forLabel.includes("previous")) {
-      for (const y of ["year1","year2","year3"]) {
-        const d=(stu.fees[y].due||0)-(stu.fees[y].paid||0);
-        if (d>0){stu.fees[y].paid=(stu.fees[y].paid||0)+Math.min(p.amount,d);break;}
-      }
-    } else {
-      const yMap={"1st Year":"year1","2nd Year":"year2","3rd Year":"year3"};
-      const k=yMap[stu.studyYear]||"year1";
-      stu.fees[k].paid=(stu.fees[k].paid||0)+p.amount;
-    }
+    const yMap={"1st Year":"year1","2nd Year":"year2","3rd Year":"year3"};
+    const k=yMap[stu.studyYear]||"year1";
+    stu.fees[k].paid=(stu.fees[k].paid||0)+p.amount;
     await DB.setStudent(stu);
 
     // Send SMS + Email notifications (hardcoded EmailJS — no settings needed)
@@ -3093,6 +3615,113 @@ async function rejectPayment(appId, payIdx) {
     setLoading(false);
     await renderAdminDash();
   } catch(e) { setLoading(false); }
+}
+
+// ═══════════════════════════════════
+//  ADMIN — RECORD CASH / OFFLINE PAYMENT
+//  (For fees collected in person — cash, cheque, DD, etc.
+//   Confirmed immediately, no verification step needed.)
+// ═══════════════════════════════════
+let _adminPayStudent = null;
+
+async function openAdminPayModal(appId) {
+  clearAlert("adminPayAlert");
+  document.getElementById("adminPayAmount").value = "";
+  document.getElementById("adminPayNote").value = "";
+  document.getElementById("adminPayFor").value = "Application Fee";
+  document.getElementById("adminPayMethod").value = "Cash";
+
+  setLoading(true, "Loading student…");
+  try {
+    const stu = await DB.getStudent(appId);
+    setLoading(false);
+    if (!stu) { alert("Student not found."); return; }
+    _adminPayStudent = stu;
+    const { totalOutstanding } = computeStudentDues(stu);
+    document.getElementById("adminPayModalTitle").textContent = "Record Payment — " + stu.name;
+    document.getElementById("adminPayStudentInfo").innerHTML = `
+      <strong>${escHtml(stu.name)}</strong> &middot; ${escHtml(stu.appId)} &middot; ${escHtml(stu.course||"—")} &middot; ${escHtml(stu.studyYear||"—")}<br>
+      <span style="color:var(--text-muted)">Total Outstanding: </span><strong>₹${fmt(totalOutstanding)}</strong>
+    `;
+    document.getElementById("adminPayModal").classList.add("open");
+  } catch(e) {
+    setLoading(false);
+    alert("Error loading student: " + e.message);
+  }
+}
+
+function closeAdminPayModal() {
+  document.getElementById("adminPayModal").classList.remove("open");
+  _adminPayStudent = null;
+}
+
+function fillAdminPayMaxDue() {
+  if (!_adminPayStudent) return;
+  const { totalOutstanding } = computeStudentDues(_adminPayStudent);
+  document.getElementById("adminPayAmount").value = totalOutstanding > 0 ? totalOutstanding : "";
+}
+
+async function submitAdminCashPayment() {
+  clearAlert("adminPayAlert");
+  if (!_adminPayStudent) return;
+
+  const amt = parseFloat(document.getElementById("adminPayAmount").value);
+  const forLabel = document.getElementById("adminPayFor").value;
+  const method = document.getElementById("adminPayMethod").value;
+  const note = v("adminPayNote");
+
+  if (isNaN(amt) || amt <= 0) {
+    showAlert("adminPayAlert","danger","Please enter a valid amount.");
+    return;
+  }
+
+  setLoading(true, "Recording payment…");
+  try {
+    const stu = await DB.getStudent(_adminPayStudent.appId);
+    if (!stu) { setLoading(false); showAlert("adminPayAlert","danger","Student not found."); return; }
+    stu.payments = stu.payments || [];
+    stu.fees = stu.fees || { year1:{due:0,paid:0}, year2:{due:0,paid:0}, year3:{due:0,paid:0} };
+
+    const payment = {
+      amount: amt,
+      forLabel,
+      method,
+      note: note || "",
+      referenceId: "CASH-" + stu.appId + "-" + Date.now(),
+      date: new Date().toISOString(),
+      status: "Confirmed",
+      confirmedAt: new Date().toISOString(),
+      collectedBy: "admin",
+      receiptNo: "PPT" + new Date().getFullYear() + String(Date.now()).slice(-6)
+    };
+    stu.payments.push(payment);
+
+    // Credit the amount to the current year's fee bucket — same logic used when verifying an online payment
+    const yMap = {"1st Year":"year1","2nd Year":"year2","3rd Year":"year3"};
+    const k = yMap[stu.studyYear] || "year1";
+    stu.fees[k].paid = (stu.fees[k].paid||0) + payment.amount;
+
+    await DB.setStudent(stu);
+
+    // Best-effort notifications — non-critical, payment is already recorded either way
+    try {
+      const settings = await DB.getSettings();
+      if (settings.smsKey && stu.mobile) { await sendSMS(settings.smsKey, stu, payment); }
+      await sendStudentStatusEmail(stu, payment, "confirmed");
+    } catch(notifyErr) {
+      console.warn("Payment notification failed (non-critical):", notifyErr.message);
+    }
+
+    setLoading(false);
+    showAlert("adminPayAlert","success", `✅ ₹${fmt(amt)} recorded for ${escHtml(stu.name)}. Closing…`);
+    setTimeout(async () => {
+      closeAdminPayModal();
+      await renderAdminDash();
+    }, 1100);
+  } catch(e) {
+    setLoading(false);
+    showAlert("adminPayAlert","danger","Error recording payment: " + e.message);
+  }
 }
 
 // ═══════════════════════════════════
@@ -3311,7 +3940,7 @@ function generateReceipt(stu, payment) {
   doc.text("DETAILS", 100, tableY+6);
   doc.text("AMOUNT", 175, tableY+6, {align:"right"});
 
-  const _fMap={"current":"Current Year Fees","arrear":"Arrear / Previous Dues","exam":"Examination Fees","misc":"Miscellaneous"};
+  const _fMap={"app":"Application Fee","tuition":"Tuition Fee","record":"Record Note","exam":"Exam Fee","examfine":"Exam fees with fine","nodues":"No dues form","misc":"Miscellaneous","idcard":"ID card","book":"Book"};
   const _fLabel = _fMap[payment.forLabel] || payment.forLabel || "Fee Payment";
   const rows = [
     ["Payment For",         _fLabel,                                            ""],
@@ -3435,62 +4064,110 @@ function generateReceipt(stu, payment) {
 // ─── Student Modal ───
 async function openStudentModal(appId) {
   setLoading(true,"Loading student…");
-  const s = await DB.getStudent(appId);
+  const [s, settings] = await Promise.all([DB.getStudent(appId), DB.getSettings()]);
   setLoading(false);
   if (!s) return;
   const f = s.fees||{year1:{due:0,paid:0},year2:{due:0,paid:0},year3:{due:0,paid:0}};
+
+  // This student's own category price if the admin has customised it,
+  // otherwise the global admin default for that category/year.
+  const catVal = (yr, key) => {
+    const own = s.feeCategories?.["year"+yr]?.[key];
+    return (own !== undefined && own !== null) ? own : (settings["defFee"+yr+key] || 0);
+  };
+
   document.getElementById("modalStudentTitle").textContent = s.name + " — " + s.appId;
   document.getElementById("modalContent").innerHTML = `
-    <div class="section-divider">Personal & Academic Info</div>
-    <div class="form-grid-2">
-      <div class="form-group"><label>Full Name</label><input class="form-control" id="mName" value="${escAttr(s.name)}"></div>
-      <div class="form-group"><label>Application ID</label><input class="form-control" value="${escAttr(s.appId)}" disabled></div>
-      <div class="form-group"><label>Programme</label><input class="form-control" id="mCourse" value="${escAttr(s.course||'')}"></div>
-      <div class="form-group"><label>Year of Study</label>
-        <select class="form-control" id="mStudyYear">
-          <option ${s.studyYear==="1st Year"?"selected":""}>1st Year</option>
-          <option ${s.studyYear==="2nd Year"?"selected":""}>2nd Year</option>
-          <option ${s.studyYear==="3rd Year"?"selected":""}>3rd Year</option>
-        </select>
+    <div style="display:flex;border-bottom:2px solid var(--border-gold);margin-bottom:20px">
+      <button class="admin-tab-btn active" id="modalTabBtn-fee" onclick="switchModalTab('fee')">💰 Fee Structure</button>
+      <button class="admin-tab-btn" id="modalTabBtn-personal" onclick="switchModalTab('personal')">👤 Personal Details</button>
+    </div>
+
+    <div id="modalTabPanel-fee">
+      <div class="section-divider">Fee Structure</div>
+      ${[1,2,3].map(yr => `
+        <div style="background:var(--gold-pale);border:1px solid var(--border-gold);border-radius:10px;padding:16px 18px;margin-bottom:16px">
+          <div style="font-weight:700;color:var(--royal);margin-bottom:12px">Year ${yr}</div>
+          <div class="form-grid-3">
+            ${ALL_FEE_CATEGORIES.map(c => `
+              <div class="form-group">
+                <label>${c.label} (₹)</label>
+                <input type="number" min="0" class="form-control" id="mCat${yr}_${c.key}"
+                  value="${catVal(yr,c.key)}" onfocus="this.select()" oninput="enforceNonNeg(this);recalcYearTotal(${yr})">
+              </div>`).join("")}
+          </div>
+          <div class="form-grid-2" style="margin-top:4px">
+            <div class="form-group">
+              <label>Total Fee for Year ${yr} (₹)</label>
+              <input class="form-control" id="mFee${yr}Due" value="${ALL_FEE_CATEGORIES.reduce((sum,c)=>sum+catVal(yr,c.key),0)}" disabled style="font-weight:600">
+            </div>
+            <div class="form-group">
+              <label>Year ${yr} — Paid (₹)</label>
+              <input type="number" min="0" class="form-control" id="mFee${yr}Paid" value="${f['year'+yr]?.paid||0}" onfocus="this.select()" oninput="enforceNonNeg(this)">
+            </div>
+          </div>
+        </div>`).join("")}
+      <div class="section-divider" style="margin-top:20px">Payment History</div>
+      ${(()=>{
+        const pays=s.payments||[];
+        if (!pays.length) return '<p class="text-muted">No payments recorded.</p>';
+        return `<div class="table-wrap" style="border:none;box-shadow:none;border-radius:0"><table>
+          <thead><tr><th>Date</th><th>Amount</th><th>For</th><th>Status</th></tr></thead>
+          <tbody>${pays.map(p=>`<tr>
+            <td class="muted">${formatDate(p.date)}</td>
+            <td><strong>₹${fmt(p.amount)}</strong></td>
+            <td>${escHtml(p.forLabel)}</td>
+            <td><span class="badge ${p.status==="Confirmed"?"badge-green":p.status==="Rejected"?"badge-red":"badge-gold"}">${p.status}</span></td>
+          </tr>`).join("")}</tbody></table></div>`;
+      })()}
+    </div>
+
+    <div id="modalTabPanel-personal" style="display:none">
+      <div class="section-divider">Personal &amp; Academic Info</div>
+      <div class="form-grid-2">
+        <div class="form-group"><label>Full Name</label><input class="form-control" id="mName" value="${escAttr(s.name)}"></div>
+        <div class="form-group"><label>Application ID</label><input class="form-control" value="${escAttr(s.appId)}" disabled></div>
+        <div class="form-group"><label>Programme</label><input class="form-control" id="mCourse" value="${escAttr(s.course||'')}"></div>
+        <div class="form-group"><label>Year of Study</label>
+          <select class="form-control" id="mStudyYear">
+            <option ${s.studyYear==="1st Year"?"selected":""}>1st Year</option>
+            <option ${s.studyYear==="2nd Year"?"selected":""}>2nd Year</option>
+            <option ${s.studyYear==="3rd Year"?"selected":""}>3rd Year</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Mobile</label><input class="form-control" id="mMobile" value="${escAttr(s.mobile||'')}"></div>
+        <div class="form-group"><label>Email</label><input class="form-control" id="mEmail" value="${escAttr(s.email||'')}"></div>
+        <div class="form-group"><label>Father's Name</label><input class="form-control" id="mFather" value="${escAttr(s.fatherName||'')}"></div>
+        <div class="form-group"><label>Mother's Name</label><input class="form-control" id="mMother" value="${escAttr(s.motherName||'')}"></div>
+        <div class="form-group"><label>Admission Year</label><input class="form-control" id="mAdmYear" value="${escAttr(s.admYear||'')}"></div>
+        <div class="form-group"><label>Community</label><input class="form-control" id="mCommunity" value="${escAttr(s.community||'')}"></div>
+        <div class="form-group"><label>School Name</label><input class="form-control" id="mSchoolName" value="${escAttr(s.schoolName||'')}"></div>
+        <div class="form-group"><label>School Address</label><input class="form-control" id="mSchoolAddress" value="${escAttr(s.schoolAddress||'')}"></div>
       </div>
-      <div class="form-group"><label>Mobile</label><input class="form-control" id="mMobile" value="${escAttr(s.mobile||'')}"></div>
-      <div class="form-group"><label>Email</label><input class="form-control" id="mEmail" value="${escAttr(s.email||'')}"></div>
-      <div class="form-group"><label>Father's Name</label><input class="form-control" id="mFather" value="${escAttr(s.fatherName||'')}"></div>
-      <div class="form-group"><label>Mother's Name</label><input class="form-control" id="mMother" value="${escAttr(s.motherName||'')}"></div>
-      <div class="form-group"><label>Admission Year</label><input class="form-control" id="mAdmYear" value="${escAttr(s.admYear||'')}"></div>
-      <div class="form-group"><label>Community</label><input class="form-control" id="mCommunity" value="${escAttr(s.community||'')}"></div>
-      <div class="form-group"><label>School Name</label><input class="form-control" id="mSchoolName" value="${escAttr(s.schoolName||'')}"></div>
-      <div class="form-group"><label>School Address</label><input class="form-control" id="mSchoolAddress" value="${escAttr(s.schoolAddress||'')}"></div>
+      <div class="form-group"><label>Address</label><textarea class="form-control" id="mAddress" rows="2">${escHtml(s.address||'')} </textarea></div>
     </div>
-    <div class="form-group"><label>Address</label><textarea class="form-control" id="mAddress" rows="2">${escHtml(s.address||'')} </textarea></div>
-    <div class="section-divider" style="margin-top:20px">Fee Structure</div>
-    <div class="form-grid-3">
-      <div class="form-group"><label>1st Year — Fee (₹)</label><input type="number" min="0" class="form-control" id="mFee1Due" value="${f.year1.due||0}" oninput="enforceNonNeg(this)"></div>
-      <div class="form-group"><label>2nd Year — Fee (₹)</label><input type="number" min="0" class="form-control" id="mFee2Due" value="${f.year2.due||0}" oninput="enforceNonNeg(this)"></div>
-      <div class="form-group"><label>3rd Year — Fee (₹)</label><input type="number" min="0" class="form-control" id="mFee3Due" value="${f.year3.due||0}" oninput="enforceNonNeg(this)"></div>
-      <div class="form-group"><label>1st Year — Paid (₹)</label><input type="number" min="0" class="form-control" id="mFee1Paid" value="${f.year1.paid||0}" oninput="enforceNonNeg(this)"></div>
-      <div class="form-group"><label>2nd Year — Paid (₹)</label><input type="number" min="0" class="form-control" id="mFee2Paid" value="${f.year2.paid||0}" oninput="enforceNonNeg(this)"></div>
-      <div class="form-group"><label>3rd Year — Paid (₹)</label><input type="number" min="0" class="form-control" id="mFee3Paid" value="${f.year3.paid||0}" oninput="enforceNonNeg(this)"></div>
-    </div>
-    <div class="section-divider" style="margin-top:20px">Payment History</div>
-    ${(()=>{
-      const pays=s.payments||[];
-      if (!pays.length) return '<p class="text-muted">No payments recorded.</p>';
-      return `<div class="table-wrap" style="border:none;box-shadow:none;border-radius:0"><table>
-        <thead><tr><th>Date</th><th>Amount</th><th>For</th><th>Status</th></tr></thead>
-        <tbody>${pays.map(p=>`<tr>
-          <td class="muted">${formatDate(p.date)}</td>
-          <td><strong>₹${fmt(p.amount)}</strong></td>
-          <td>${escHtml(p.forLabel)}</td>
-          <td><span class="badge ${p.status==="Confirmed"?"badge-green":p.status==="Rejected"?"badge-red":"badge-gold"}">${p.status}</span></td>
-        </tr>`).join("")}</tbody></table></div>`;
-    })()}
+
     <div class="d-flex gap-12 mt-24">
       <button class="btn btn-primary" style="flex:1" onclick="saveStudentEdit('${escAttr(appId)}')">Save All Changes</button>
       <button class="btn btn-danger btn-sm" onclick="deleteStudent('${escAttr(appId)}')">Delete</button>
     </div>
     <div id="modalSaveMsg" style="margin-top:12px"></div>`;
   document.getElementById("studentModal").classList.add("open");
+}
+
+function recalcYearTotal(yr) {
+  const total = ALL_FEE_CATEGORIES.reduce((sum,c) => sum + (Math.max(0,parseFloat(document.getElementById("mCat"+yr+"_"+c.key)?.value))||0), 0);
+  const el = document.getElementById("mFee"+yr+"Due");
+  if (el) el.value = total;
+}
+
+function switchModalTab(tab) {
+  ["fee","personal"].forEach(t => {
+    const panel = document.getElementById("modalTabPanel-" + t);
+    const btn   = document.getElementById("modalTabBtn-" + t);
+    if (panel) panel.style.display = (t === tab) ? "" : "none";
+    if (btn)   btn.classList.toggle("active", t === tab);
+  });
 }
 
 async function saveStudentEdit(appId) {
@@ -3509,11 +4186,24 @@ async function saveStudentEdit(appId) {
     stu.schoolName    = document.getElementById("mSchoolName")?.value || stu.schoolName || "";
     stu.schoolAddress = document.getElementById("mSchoolAddress")?.value || stu.schoolAddress || "";
     stu.address       = document.getElementById("mAddress").value;
-    stu.fees = {
-      year1:{due:Math.max(0,parseFloat(document.getElementById("mFee1Due").value)||0),paid:Math.max(0,parseFloat(document.getElementById("mFee1Paid").value)||0)},
-      year2:{due:Math.max(0,parseFloat(document.getElementById("mFee2Due").value)||0),paid:Math.max(0,parseFloat(document.getElementById("mFee2Paid").value)||0)},
-      year3:{due:Math.max(0,parseFloat(document.getElementById("mFee3Due").value)||0),paid:Math.max(0,parseFloat(document.getElementById("mFee3Paid").value)||0)},
-    };
+
+    const feeCategories = { year1:{}, year2:{}, year3:{} };
+    const fees = {};
+    [1,2,3].forEach(yr => {
+      let total = 0;
+      ALL_FEE_CATEGORIES.forEach(c => {
+        const val = Math.max(0, parseFloat(document.getElementById("mCat"+yr+"_"+c.key)?.value) || 0);
+        feeCategories["year"+yr][c.key] = val;
+        total += val;
+      });
+      fees["year"+yr] = {
+        due: total,
+        paid: Math.max(0, parseFloat(document.getElementById("mFee"+yr+"Paid")?.value) || 0)
+      };
+    });
+    stu.feeCategories = feeCategories;
+    stu.fees = fees;
+
     await DB.setStudent(stu);
     setLoading(false);
     const msg=document.getElementById("modalSaveMsg");
@@ -3532,6 +4222,9 @@ async function deleteStudent(appId) {
 }
 
 function closeModal() { document.getElementById("studentModal").classList.remove("open"); }
+function confirmCloseModal() {
+  if (confirm("You have unsaved changes. Close without saving?")) closeModal();
+}
 
 // Student downloads their own receipt
 function downloadReceipt(payIdx) {
@@ -3568,7 +4261,9 @@ function escAttr(s){ return String(s||"").replace(/'/g,"\\'").replace(/"/g,"&quo
 function showAlert(id,type,msg){ const el=document.getElementById(id); if(el) el.innerHTML=`<div class="alert alert-${type}">${msg}</div>`; }
 function clearAlert(id){ const el=document.getElementById(id); if(el) el.innerHTML=""; }
 
-document.getElementById("studentModal").addEventListener("click",function(e){ if(e.target===this) closeModal(); });
+document.getElementById("studentModal").addEventListener("click",function(e){
+  if (e.target === this) confirmCloseModal();
+});
 document.addEventListener("keydown",e=>{
   if(e.key==="Enter"&&document.getElementById("pagLogin").classList.contains("active")) doLogin();
 });
