@@ -430,8 +430,8 @@ textarea.form-control{resize:vertical;min-height:80px}
   <section class="register-section">
     <div class="register-card">
       <div class="register-card-head">
-        <h2>New Student Registration</h2>
-        <p>Create your fee portal account — fill in all required details accurately.</p>
+        <h2 id="registerHeadTitle">New Student Registration</h2>
+        <p id="registerHeadSubtitle">Create your fee portal account — fill in all required details accurately.</p>
       </div>
       <div class="gold-bar"></div>
       <div class="register-card-body">
@@ -461,7 +461,7 @@ textarea.form-control{resize:vertical;min-height:80px}
           </div>
           <div class="form-group">
             <label>Current Year of Study <span class="required">*</span></label>
-            <select id="rStudyYear" class="form-control" onchange="validateSelect('rStudyYear','Please select year of study')">
+            <select id="rStudyYear" class="form-control" onchange="validateSelect('rStudyYear','Please select year of study');updateAdminFeeCheckboxAvailability()">
               <option value="">Select</option>
               <option>1st Year</option><option>2nd Year</option><option>3rd Year</option>
             </select>
@@ -734,8 +734,42 @@ textarea.form-control{resize:vertical;min-height:80px}
           </div>
         </div>
 
+        <!-- Fee Details (admin add-student mode only) -->
+        <div id="adminFeeSection" style="display:none">
+          <div class="section-divider">Fee Details</div>
+          <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:14px">
+            Tick a year below if that year's fees have already been paid by the student (e.g. paid in person / before this portal was used). Leave unticked if still due.
+          </div>
+          <div class="fee-grid" id="adminFeeGrid">
+            <div class="fee-card" id="admFeeCard1">
+              <div class="card-label">Year 1 Fees</div>
+              <div class="card-amount">₹<span id="admFeeAmt1">0</span></div>
+              <label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:0.85rem;cursor:pointer">
+                <input type="checkbox" id="admFeePaid1" style="width:16px;height:16px;cursor:pointer" onchange="enforceAdminFeeCheckbox(1)"> Already paid
+              </label>
+              <div id="admFeeLock1" style="display:none;font-size:0.75rem;color:var(--text-muted);margin-top:6px">Not reached yet</div>
+            </div>
+            <div class="fee-card" id="admFeeCard2">
+              <div class="card-label">Year 2 Fees</div>
+              <div class="card-amount">₹<span id="admFeeAmt2">0</span></div>
+              <label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:0.85rem;cursor:pointer">
+                <input type="checkbox" id="admFeePaid2" style="width:16px;height:16px;cursor:pointer" onchange="enforceAdminFeeCheckbox(2)"> Already paid
+              </label>
+              <div id="admFeeLock2" style="display:none;font-size:0.75rem;color:var(--text-muted);margin-top:6px">Not reached yet</div>
+            </div>
+            <div class="fee-card" id="admFeeCard3">
+              <div class="card-label">Year 3 Fees</div>
+              <div class="card-amount">₹<span id="admFeeAmt3">0</span></div>
+              <label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:0.85rem;cursor:pointer">
+                <input type="checkbox" id="admFeePaid3" style="width:16px;height:16px;cursor:pointer" onchange="enforceAdminFeeCheckbox(3)"> Already paid
+              </label>
+              <div id="admFeeLock3" style="display:none;font-size:0.75rem;color:var(--text-muted);margin-top:6px">Not reached yet</div>
+            </div>
+          </div>
+        </div>
+
         <div class="d-flex gap-12 mt-24">
-          <button class="btn btn-outline" onclick="showPage('pagLogin')" style="min-width:120px">← Back</button>
+          <button class="btn btn-outline" onclick="cancelRegisterPage()" style="min-width:120px">← Back</button>
           <button class="btn btn-primary" style="flex:1" id="registerBtn" onclick="doRegister()">Register Account</button>
         </div>
       </div>
@@ -961,12 +995,13 @@ textarea.form-control{resize:vertical;min-height:80px}
       <div class="card-head">
         <h3>Registered Students</h3>
         <div class="d-flex gap-8 align-center">
+          <button class="btn btn-gold btn-sm" onclick="openAdminAddStudent()">＋ Add Student</button>
           <div class="search-input-wrap">
             <input type="text" id="adminSearch" placeholder="Search by name or App ID…" oninput="renderStudentTable()">
           </div>
           <select id="adminFilterYear" class="form-control" style="width:auto;padding:8px 12px;font-size:0.85rem" onchange="renderStudentTable()">
             <option value="">All Years</option>
-            <option>1st Year</option><option>2nd Year</option><option>3rd Year</option>
+            <option>1st Year</option><option>2nd Year</option><option>3rd Year</option><option>Passed Out</option>
           </select>
         </div>
       </div>
@@ -1006,10 +1041,12 @@ textarea.form-control{resize:vertical;min-height:80px}
         <div>
           <h3>College Payment Settings</h3>
           <button class="btn btn-edit btn-sm" id="btnEditPaySettings" onclick="toggleEditSection('paySettings')">✏ Edit</button>
+          <span id="paySettingsSavedMsg" style="font-size:0.82rem;color:var(--success);display:none;margin-left:10px">✓ Saved!</span>
         </div>
         <div>
           <h3>Default Annual Fee Structure</h3>
           <button class="btn btn-edit btn-sm" id="btnEditFeeStruct" onclick="toggleEditSection('feeStruct')">✏ Edit</button>
+          <span id="feeStructSavedMsg" style="font-size:0.82rem;color:var(--success);display:none;margin-left:10px">✓ Saved!</span>
         </div>
       </div>
       <div class="combined-inner">
@@ -1570,11 +1607,38 @@ async function sha256Hash(text) {
 //  Every June 30th the student's year increments automatically.
 //  admYear is the year they joined (e.g. 2024 = joined 2024, 1st year).
 //  On June 30, 2025 → 2nd Year. On June 30, 2026 → 3rd Year.
+//  On June 30, 2027 (cutoff crossed again while already in 3rd Year) →
+//  Passed Out. Passed Out is terminal — once reached it is never
+//  incremented further (yearsElapsed only grows, so the check below keeps
+//  resolving to Passed Out forever). Fee/dues logic still treats a
+//  Passed Out student exactly like a 3rd Year student — see
+//  computeCurrentYear()/isPassedOut() split below.
 // ══════════════════════════════════════════════════════════
 // Global academic year cutoff — loaded from settings, defaults to June 30
 // Format: { month: 5, day: 30 } (month is 0-indexed: 5 = June)
 window._acadCutoff = { month: 5, day: 30 };
 
+// True once a student has crossed the cutoff for a 4th time (i.e. has
+// completed 3rd Year and the next rollover has passed), OR the admin has
+// explicitly marked them "Passed Out" via the edit modal. This is checked
+// off admission date only, so it never un-does itself and never blocks a
+// legitimate 1st→2nd→3rd promotion along the way.
+function isPassedOut(stu) {
+  if (stu.studyYear === "Passed Out") return true; // admin-set, persisted
+  const admYear = parseInt(stu.admYear) || 2024;
+  const now     = new Date();
+  const cm      = window._acadCutoff.month;
+  const cd      = window._acadCutoff.day;
+  const cutoff  = new Date(now.getFullYear(), cm, cd);
+  let yearsElapsed = now.getFullYear() - admYear;
+  if (now < cutoff) yearsElapsed--;
+  yearsElapsed = Math.max(0, yearsElapsed);
+  return yearsElapsed >= 3; // 0=1st,1=2nd,2=3rd,3+=Passed Out
+}
+
+// Numeric year (1-3) used ONLY for fee-bucket calculations. A Passed Out
+// student is always treated as year 3 here — fees, dues, view/edit and pay
+// options must stay identical to a 3rd Year student.
 function computeCurrentYear(stu) {
   const admYear = parseInt(stu.admYear) || 2024;
   const now     = new Date();
@@ -1597,8 +1661,11 @@ function computeCurrentYear(stu) {
   return autoYear;
 }
 
-// Returns correct studyYear string based on admission year + auto-increment
+// Returns correct studyYear string based on admission year + auto-increment.
+// Once a student has passed out, this keeps returning "Passed Out" forever
+// (see isPassedOut) so checkAndIncrementYear() naturally stops advancing them.
 function getAutoStudyYear(stu) {
+  if (isPassedOut(stu)) return "Passed Out";
   const n = computeCurrentYear(stu);
   return ["1st Year","2nd Year","3rd Year"][n-1];
 }
@@ -2069,18 +2136,176 @@ async function doRegister() {
       year3: { due: Math.max(0, sumYearDefaultFees(settings,3)), paid: 0 },
     };
 
+    // Admin add-student mode: apply "Already paid" checkboxes — mark the
+    // ticked year(s) as fully paid, credit every fee category for that year
+    // (so per-category views agree with the year total), and log a payment
+    // record so it shows up in the student's payment history / receipts.
+    if (window._adminAddMode) {
+      f.payments = [];
+      const _studyYearMap = { "1st Year":1, "2nd Year":2, "3rd Year":3 };
+      const _studyYearNum = _studyYearMap[f.studyYear] || 0;
+      [1,2,3].forEach(yr=>{
+        const yKey = "year"+yr;
+        // Safety net: never honor an "already paid" tick for a year beyond
+        // the student's selected current year of study, even if the
+        // checkbox was somehow left checked/enabled client-side.
+        const checked = yr <= _studyYearNum && document.getElementById("admFeePaid"+yr)?.checked;
+        const due = f.fees[yKey].due;
+        if (checked && due > 0) {
+          f.fees[yKey].paid = due;
+          f.categoryPaid = f.categoryPaid || { year1:{}, year2:{}, year3:{} };
+          FEE_DEFAULT_CATEGORIES.forEach(c=>{
+            const catAmt = settings["defFee"+yr+c.key] || 0;
+            if (catAmt > 0) f.categoryPaid[yKey][c.key] = catAmt;
+          });
+          f.payments.push({
+            amount: due,
+            forLabel: "Year "+yr+" Fees (Full)",
+            method: "Cash",
+            note: "Marked as already paid during admin registration",
+            referenceId: "ADMIN-" + f.appId + "-" + yr + "-" + Date.now(),
+            date: new Date().toISOString(),
+            status: "Confirmed",
+            confirmedAt: new Date().toISOString(),
+            collectedBy: "admin",
+            receiptNo: "PPT" + new Date().getFullYear() + String(Date.now()).slice(-6) + yr,
+            yKey: yKey,
+            studyYearAtPayment: f.studyYear
+          });
+        }
+      });
+    }
+
     // Store only the password hash — never the raw password
     f.passwordHash = await sha256Hash(rawPwd);
-    f.payments = [];
+    f.payments = f.payments || [];
     f.registeredAt = new Date().toISOString();
     await DB.setStudent(f);
     setLoading(false);
-    showAlert("registerAlert","success","Account created successfully! You can now sign in.");
-    setTimeout(()=>showPage("pagLogin"),2000);
+    if (window._adminAddMode) {
+      showAlert("registerAlert","success","Student added successfully! Returning to dashboard…");
+      setTimeout(async()=>{
+        window._adminAddMode = false;
+        resetRegisterForm();
+        await renderAdminDash();
+        showPage("pagAdmin");
+      },1500);
+    } else {
+      showAlert("registerAlert","success","Account created successfully! You can now sign in.");
+      setTimeout(()=>showPage("pagLogin"),2000);
+    }
   } catch(e) {
     setLoading(false);
     showAlert("registerAlert","danger","Error creating account. Please try again. ("+e.message+")");
   }
+}
+
+// ═══════════════════════════════════
+//  ADMIN — ADD STUDENT
+//  Reuses the public registration form/flow so a single code path
+//  handles validation & student creation, but launches it from the
+//  admin dashboard and returns to the dashboard on success/cancel
+//  instead of sending the admin to the login page.
+// ═══════════════════════════════════
+function openAdminAddStudent() {
+  window._adminAddMode = true;
+  resetRegisterForm();
+  const titleEl = document.getElementById("registerHeadTitle");
+  const subEl = document.getElementById("registerHeadSubtitle");
+  if (titleEl) titleEl.textContent = "Add New Student";
+  if (subEl) subEl.textContent = "Create a student account on their behalf — fill in all required details accurately.";
+  const feeSection = document.getElementById("adminFeeSection");
+  if (feeSection) feeSection.style.display = "block";
+  // Load current fee-year amounts so the admin can see what "Already paid" means per year
+  DB.getSettings().then(settings=>{
+    window._adminAddFeeAmounts = {
+      year1: Math.max(0, sumYearDefaultFees(settings,1)),
+      year2: Math.max(0, sumYearDefaultFees(settings,2)),
+      year3: Math.max(0, sumYearDefaultFees(settings,3)),
+    };
+    [1,2,3].forEach(yr=>{
+      const el = document.getElementById("admFeeAmt"+yr);
+      if (el) el.textContent = fmt(window._adminAddFeeAmounts["year"+yr]);
+    });
+  }).catch(()=>{});
+  updateAdminFeeCheckboxAvailability();
+  showPage("pagRegister");
+}
+
+// Keep the "Already paid" checkboxes in sync with the selected
+// "Current Year of Study" — a student can only have paid fees up to
+// (and including) the year they're currently in; future years can't
+// have been paid yet, so lock & uncheck them.
+function updateAdminFeeCheckboxAvailability() {
+  if (!window._adminAddMode) return;
+  const yearMap = { "1st Year":1, "2nd Year":2, "3rd Year":3 };
+  const selected = yearMap[v("rStudyYear")] || 0;
+  [1,2,3].forEach(yr=>{
+    const cb = document.getElementById("admFeePaid"+yr);
+    const card = document.getElementById("admFeeCard"+yr);
+    const lock = document.getElementById("admFeeLock"+yr);
+    if (!cb) return;
+    const allowed = selected > 0 && yr <= selected;
+    cb.disabled = !allowed;
+    if (!allowed) cb.checked = false;
+    if (card) card.style.opacity = allowed ? "1" : "0.5";
+    if (lock) lock.style.display = allowed ? "none" : "block";
+  });
+}
+
+// Defense-in-depth: if a checkbox somehow ends up checked for a year
+// beyond the selected current year of study, immediately uncheck it.
+function enforceAdminFeeCheckbox(yr) {
+  const yearMap = { "1st Year":1, "2nd Year":2, "3rd Year":3 };
+  const selected = yearMap[v("rStudyYear")] || 0;
+  if (yr > selected) {
+    const cb = document.getElementById("admFeePaid"+yr);
+    if (cb) cb.checked = false;
+  }
+}
+
+function cancelRegisterPage() {
+  if (window._adminAddMode) {
+    window._adminAddMode = false;
+    resetRegisterForm();
+    showPage("pagAdmin");
+  } else {
+    showPage("pagLogin");
+  }
+}
+
+function resetRegisterForm() {
+  const container = document.querySelector("#pagRegister .register-card-body");
+  if (!container) return;
+  container.querySelectorAll("input, select, textarea").forEach(el=>{
+    if (el.tagName === "SELECT") el.selectedIndex = 0;
+    else if (el.type === "checkbox") el.checked = false;
+    else el.value = "";
+  });
+  const stateEl = document.getElementById("rSchoolState");
+  if (stateEl) stateEl.value = "Tamil Nadu";
+  container.querySelectorAll(".field-error").forEach(el=>el.textContent="");
+  clearAlert("registerAlert");
+  switchRegSubtab("parent");
+  // Restore default heading (in case admin mode had changed it)
+  const titleEl = document.getElementById("registerHeadTitle");
+  const subEl = document.getElementById("registerHeadSubtitle");
+  if (titleEl) titleEl.textContent = "New Student Registration";
+  if (subEl) subEl.textContent = "Create your fee portal account — fill in all required details accurately.";
+  // Hide & reset the admin-only fee-details section
+  const feeSection = document.getElementById("adminFeeSection");
+  if (feeSection) feeSection.style.display = "none";
+  [1,2,3].forEach(yr=>{
+    const amtEl = document.getElementById("admFeeAmt"+yr);
+    if (amtEl) amtEl.textContent = "0";
+    const cb = document.getElementById("admFeePaid"+yr);
+    const card = document.getElementById("admFeeCard"+yr);
+    const lock = document.getElementById("admFeeLock"+yr);
+    if (cb) cb.disabled = false;
+    if (card) card.style.opacity = "1";
+    if (lock) lock.style.display = "none";
+  });
+  window._adminAddFeeAmounts = null;
 }
 
 // ═══════════════════════════════════
@@ -2129,7 +2354,10 @@ async function renderStudentDash() {
   const s = currentUser;
   // Use computeCurrentYear to get the correct year (respects admin override)
   const effectiveYearNum = computeCurrentYear(s);
-  const effectiveYearStr = ["1st Year","2nd Year","3rd Year"][effectiveYearNum-1];
+  // effectiveYearStr is the DISPLAY label — "Passed Out" once the student
+  // has completed 3rd Year and the next rollover has passed. Fee/dues
+  // calculations below still key off effectiveYearNum (always 1-3).
+  const effectiveYearStr = getAutoStudyYear(s);
   // Update student record in memory if auto-year differs
   if (s.studyYear !== effectiveYearStr) s.studyYear = effectiveYearStr;
 
@@ -2149,8 +2377,10 @@ async function renderStudentDash() {
 
   const f = s.fees || { year1:{due:0,paid:0}, year2:{due:0,paid:0}, year3:{due:0,paid:0} };
 
-  // Which year the student is currently in (number 1, 2, or 3)
-  const yearMap = { "1st Year":1, "2nd Year":2, "3rd Year":3 };
+  // Which year the student is currently in (number 1, 2, or 3).
+  // Passed Out students keep behaving exactly like 3rd Year here — pay
+  // options and dues must stay unchanged after graduating.
+  const yearMap = { "1st Year":1, "2nd Year":2, "3rd Year":3, "Passed Out":3 };
   const currentYearNum = yearMap[s.studyYear] || 1;
 
   // Only compute dues for years the student has REACHED
@@ -2319,32 +2549,30 @@ function computeCategoryDueForStudent(s, forVal, settings) {
   const cat = ALL_FEE_CATEGORIES.find(c => c.label === forVal);
   if (!cat) return null;
 
-  const yearMap = {"1st Year":1,"2nd Year":2,"3rd Year":3};
+  const yearMap = {"1st Year":1,"2nd Year":2,"3rd Year":3,"Passed Out":3};
   const yn = yearMap[s.studyYear] || 1;
   const yKey = ["year1","year2","year3"][yn-1];
 
   // Ad-hoc categories (Exam fees with fine, No dues form, Miscellaneous)
   // have no preset price by design — a ₹0/unset amount there means "free
-  // entry", so they fall through to "uncapped" below. The regular
-  // categories (Application Fee, Tuition Fee, Record Note, Exam Fee, ID
-  // card, Book) DO have a configured price — for those, ₹0 genuinely means
-  // "nothing is due for this category", not "no cap, use the total
-  // outstanding balance instead" (which is what caused Pay Full to fill in
-  // the whole year's balance for a category priced at ₹0).
-  const isAdHoc = AD_HOC_FEE_CATEGORIES.some(a => a.key === cat.key);
-  // "Record Note" is technically one of the admin-priced categories, but in
-  // practice it's frequently left unconfigured (many students never have a
-  // Record Note fee set at all). Treating its unset ₹0 as "fully cleared"
-  // is misleading — it should read as "amount not set", same as the ad-hoc
-  // categories, until the admin actually prices it.
-  const treatZeroAsUnset = isAdHoc || cat.key === "Record";
-
+  // entry", so they fall through to "uncapped" below.
+  //
+  // The regular, admin-priced categories (Application Fee, Tuition Fee,
+  // Record Note, Exam Fee, ID card, Book) are *supposed* to have a
+  // configured price, but the settings schema has no way to distinguish
+  // "admin explicitly priced this at ₹0" from "admin never touched this
+  // category" — both are stored as 0. In practice it's always the latter
+  // (nobody prices a real fee category at ₹0), so treat catAmt<=0 as "not
+  // set yet" for these too, same as the ad-hoc ones, rather than "nothing
+  // due" (which used to show a misleading "fully cleared" message and, if
+  // caught by Pay Full instead, would silently fill in the whole year's
+  // outstanding balance for a category that was simply never priced).
   let catAmt = s.feeCategories?.[yKey]?.[cat.key];
   if (catAmt === undefined || catAmt === null) {
     if (!settings) return null; // settings not loaded yet — treat as uncapped for now
     catAmt = settings["defFee"+yn+cat.key] || 0;
   }
-  if (catAmt <= 0) return treatZeroAsUnset ? null : 0;
+  if (catAmt <= 0) return null;
 
   // Subtract what's already been paid specifically for THIS category.
   // Without this, a category (e.g. "No dues form") that's fully settled
@@ -2379,7 +2607,7 @@ function creditCategoryPaid(stu, yKey, forLabel, amount) {
 // Oldest unpaid year is settled first, then the next, etc., until the
 // amount runs out.
 function creditArrearPayment(stu, studyYearAtPayment, amount) {
-  const yearMap = {"1st Year":1,"2nd Year":2,"3rd Year":3};
+  const yearMap = {"1st Year":1,"2nd Year":2,"3rd Year":3,"Passed Out":3};
   const yn = yearMap[studyYearAtPayment] || 1;
   const years = ["year1","year2","year3"];
   let remaining = amount;
@@ -2443,7 +2671,7 @@ function updateAmountHint() {
   const s = currentUser; if (!s) return;
   const forVal = document.getElementById("sPayFor")?.value;
   const f = s.fees || {};
-  const yearMap = {"1st Year":1,"2nd Year":2,"3rd Year":3};
+  const yearMap = {"1st Year":1,"2nd Year":2,"3rd Year":3,"Passed Out":3};
   const yn   = yearMap[s.studyYear] || 1;
   const yKey = ["year1","year2","year3"][yn-1];
 
@@ -3400,7 +3628,7 @@ async function markPaymentDone() {
     // auto-advances over time, so if we waited and re-derived it later (e.g.
     // when admin confirms), the credit could land on the wrong year and the
     // real year would never show "Cleared". See confirmPayment().
-    const yearMapNow = {"1st Year":"year1","2nd Year":"year2","3rd Year":"year3"};
+    const yearMapNow = {"1st Year":"year1","2nd Year":"year2","3rd Year":"year3","Passed Out":"year3"};
     // "Arrear Dues" spans multiple past years, not one — leave yKey unset so
     // confirmPayment() knows to route it through creditArrearPayment()
     // instead of crediting a single year.
@@ -3460,6 +3688,22 @@ async function renderAdminDash() {
     window._acadCutoff = { month: _cm, day: _cd };
     if (document.getElementById("viewAcadDate"))
       document.getElementById("viewAcadDate").textContent = _cd + " " + _monthNames[_cm] + " every year";
+    // Auto-advance any students whose academic year has crossed the cutoff.
+    // Previously this only got PERSISTED to Firestore when the student
+    // personally logged back in (checkAndIncrementYear ran from
+    // renderStudentDash only) — the admin table just patched studyYear in
+    // memory for display, so a student who hadn't logged in since the
+    // rollover date kept their stale stored year everywhere else (fee
+    // category pricing, payment records, receipts, the edit modal). Do the
+    // same persisted increment here so the whole roster actually rolls over
+    // the moment the admin loads the dashboard on/after the cutoff date,
+    // not just whenever each individual student happens to log in.
+    try {
+      const toAdvance = students.filter(s => getAutoStudyYear(s) !== s.studyYear);
+      if (toAdvance.length) {
+        await Promise.all(toAdvance.map(s => checkAndIncrementYear(s).catch(()=>{})));
+      }
+    } catch(e) { console.warn("Bulk year advance failed:", e.message); }
     // Set select values and populate days for the chosen month
     const _monEl = document.getElementById("acadCutoffMonth");
     if (_monEl) {
@@ -3623,10 +3867,11 @@ async function savePaymentSettings() {
   document.getElementById("viewEmailSvc").innerHTML = s.emailSvc ? escHtml(s.emailSvc) : '<em class="text-muted">Not set</em>';
   document.getElementById("viewEmailTpl").innerHTML = s.emailTpl ? escHtml(s.emailTpl) : '<em class="text-muted">Not set</em>';
   document.getElementById("viewEmailKey").innerHTML = s.emailKey ? '••••••••••••'      : '<em class="text-muted">Not set</em>';
-  // Show saved message — stay in edit mode, don't auto-cancel
-  // User must click Cancel themselves to close
-  const msg = document.getElementById("settingsSavedMsg");
-  msg.style.display = "block";
+  // Switch back to the read-only view and show the Edit button again
+  cancelEditSection('paySettings');
+  // Show a brief "Saved!" confirmation in the view header
+  const msg = document.getElementById("paySettingsSavedMsg");
+  msg.style.display = "inline";
   setTimeout(() => { msg.style.display = "none"; }, 2500);
 }
 
@@ -3688,9 +3933,11 @@ async function saveDefaultFees() {
 
   setLoading(false);
   renderFeeStructTables(s);
-  // Show saved — stay in edit mode until user clicks Cancel
-  const msg = document.getElementById("feeSavedMsg");
-  msg.style.display = "block";
+  // Switch back to the read-only view and show the Edit button again
+  cancelEditSection('feeStruct');
+  // Show a brief "Saved!" confirmation in the view header
+  const msg = document.getElementById("feeStructSavedMsg");
+  msg.style.display = "inline";
   setTimeout(() => { msg.style.display = "none"; }, 2500);
 }
 
@@ -3712,7 +3959,7 @@ async function confirmPayment(appId, payIdx) {
     // submission, so re-deriving it here would credit the wrong year and
     // that year would never show "Cleared". Older payments recorded before
     // this fix won't have yKey, so fall back to the old (best-effort) logic.
-    const yMap={"1st Year":"year1","2nd Year":"year2","3rd Year":"year3"};
+    const yMap={"1st Year":"year1","2nd Year":"year2","3rd Year":"year3","Passed Out":"year3"};
     if (p.forLabel === "Arrear Dues") {
       creditArrearPayment(stu, p.studyYearAtPayment || stu.studyYear, p.amount);
     } else {
@@ -3944,7 +4191,7 @@ async function submitAdminCashPayment() {
     // not the freshly-refetched stu — if studyYear auto-advanced in between,
     // crediting the live stu.studyYear would put the money on the wrong year
     // and that year would never show "Cleared".
-    const yMap = {"1st Year":"year1","2nd Year":"year2","3rd Year":"year3"};
+    const yMap = {"1st Year":"year1","2nd Year":"year2","3rd Year":"year3","Passed Out":"year3"};
     const k = yMap[_adminPayStudent.studyYear] || yMap[stu.studyYear] || "year1";
     // "Arrear Dues" spans multiple past years, not a single yKey — it gets
     // distributed (oldest year first) by creditArrearPayment() below instead.
@@ -4418,6 +4665,7 @@ async function openStudentModal(appId) {
             <option ${s.studyYear==="1st Year"?"selected":""}>1st Year</option>
             <option ${s.studyYear==="2nd Year"?"selected":""}>2nd Year</option>
             <option ${s.studyYear==="3rd Year"?"selected":""}>3rd Year</option>
+            <option ${s.studyYear==="Passed Out"?"selected":""}>Passed Out</option>
           </select>
         </div>
         <div class="form-group"><label>Mobile</label><input class="form-control" id="mMobile" value="${escAttr(s.mobile||'')}"></div>
@@ -4603,6 +4851,16 @@ async function restoreSession() {
     } else if (session.type === "student" && session.appId) {
       setLoading(true, "Restoring your session…");
       const stu = await DB.getStudent(session.appId);
+      // Load the admin-configured academic-year cutoff before computing the
+      // student's year — without this, a restored session (page refresh /
+      // reopening the app, as opposed to a fresh login) would fall back to
+      // the hardcoded default cutoff (30 June) instead of whatever the
+      // admin actually set, which could mis-time the year rollover.
+      try {
+        const _ss = await DB.getSettings();
+        if (_ss.acadCutoffMonth !== undefined)
+          window._acadCutoff = { month: _ss.acadCutoffMonth, day: _ss.acadCutoffDay||30 };
+      } catch(e) {}
       setLoading(false);
       if (stu) {
         currentUser = stu;
@@ -4638,6 +4896,41 @@ function liveValidatePincode(el) {
   if (val.length < 6) { setFieldError("err-rSchoolPincode", val.length+"/6 digits — need "+(6-val.length)+" more"); return; }
   clearFieldError("err-rSchoolPincode");
 }
+
+// ─── ENTER-KEY FIELD NAVIGATION (registration / add-student form) ───
+// Pressing Enter in a field moves focus to the next visible, enabled
+// field instead of doing nothing (or submitting). On the last field,
+// Enter clicks the Register/Create Account button.
+(function(){
+  const container = document.querySelector("#pagRegister .register-card-body");
+  if (!container) return;
+  function isNavigable(el){
+    if (!el) return false;
+    const tag = el.tagName;
+    if (tag !== "INPUT" && tag !== "SELECT") return false;
+    if (tag === "INPUT" && (el.type === "hidden" || el.type === "checkbox")) return false;
+    if (el.disabled) return false;
+    return el.offsetParent !== null; // visible (skips inactive subtabs / hidden sections)
+  }
+  container.addEventListener("keydown", function(e){
+    if (e.key !== "Enter") return;
+    const el = e.target;
+    if (el.tagName === "TEXTAREA") return; // allow normal newline entry
+    if (el.tagName === "BUTTON") return; // let buttons behave normally
+    if (!isNavigable(el)) return;
+    e.preventDefault();
+    const all = Array.from(container.querySelectorAll("input, select")).filter(isNavigable);
+    const idx = all.indexOf(el);
+    if (idx === -1) return;
+    const next = all[idx+1];
+    if (next) {
+      next.focus();
+      if (typeof next.select === "function" && next.tagName === "INPUT") next.select();
+    } else {
+      document.getElementById("registerBtn")?.click();
+    }
+  });
+})();
 
 // ─── INIT ───
 window.addEventListener("DOMContentLoaded", async()=>{
