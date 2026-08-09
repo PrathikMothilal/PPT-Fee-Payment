@@ -1335,13 +1335,13 @@ textarea.form-control{resize:vertical;min-height:80px}
 //  FIREBASE CONFIG — Pallavan Polytechnic College
 // ═══════════════════════════════════
 const firebaseConfig = {
-  apiKey: "AIzaSyBbHk8jje1FLSHFd_4M0JNIRODG11aHlEc",
-  authDomain: "ppt86-95c61.firebaseapp.com",
-  projectId: "ppt86-95c61",
-  storageBucket: "ppt86-95c61.firebasestorage.app",
-  messagingSenderId: "594297425074",
-  appId: "1:594297425074:web:94ea9b2e38d1996f55cdab",
-  measurementId: "G-L3Y1ZRQ0NF"
+  apiKey: "AIzaSyCSJqDdfaFaOUH7VpFH4mo4uFwns1RDDp0",
+  authDomain: "ppt86-e113a.firebaseapp.com",
+  projectId: "ppt86-e113a",
+  storageBucket: "ppt86-e113a.firebasestorage.app",
+  messagingSenderId: "839768314852",
+  appId: "1:839768314852:web:2f1f2298b215944289adf1",
+  measurementId: "G-Y9TYK2KJLT"
 };
 
 // ═══════════════════════════════════
@@ -1410,7 +1410,7 @@ async function initDB() {
     }
 
     useFirebase = true;
-    console.log('✅ Firestore connected — project: ppt86-95c61');
+    console.log('✅ Firestore connected — project: ' + firebaseConfig.projectId);
     dbInitSuccess = true;
   } catch(e) {
     console.warn('⚠️ Firestore connection failed:', e.message);
