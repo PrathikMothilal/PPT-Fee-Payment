@@ -4636,8 +4636,8 @@ function generateReceipt(stu, payment) {
     if (row[2]) {
       doc.setFont("helvetica","bold");
       doc.setTextColor(...royal);
-      doc.setFontSize(9);
-      doc.text(row[2], 175, rowY+6, {align:"right"});
+      doc.setFontSize(13);
+      doc.text(row[2], 175, rowY+6.5, {align:"right"});
     }
     rowY += 9;
   });
@@ -4660,13 +4660,20 @@ function generateReceipt(stu, payment) {
     ]);
   }
 
-  // Resize summary box height based on number of rows shown
-  const summaryBoxH = 14 + summaryItems.length * 7;
+  // Resize summary box height based on number of rows shown — both the fee
+  // summary box and the balance-due box below share this exact height so
+  // their borders always line up, and a floor keeps the balance box tall
+  // enough for its three lines of text even with only one fee year.
+  const summaryBoxH = Math.max(33, 14 + summaryItems.length * 7);
+
+  // Fee summary box (left) — narrower than before so its content never
+  // runs under the balance-due box, with a clear gap between the two.
+  const sumBoxW = 112; // 12 → 124
   doc.setFillColor(240, 235, 255);
-  doc.roundedRect(12, sumY, W-24, summaryBoxH, 3, 3, "F");
+  doc.roundedRect(12, sumY, sumBoxW, summaryBoxH, 3, 3, "F");
   doc.setDrawColor(...royal);
   doc.setLineWidth(0.4);
-  doc.roundedRect(12, sumY, W-24, summaryBoxH, 3, 3, "S");
+  doc.roundedRect(12, sumY, sumBoxW, summaryBoxH, 3, 3, "S");
 
   doc.setFont("helvetica","bold");
   doc.setFontSize(8);
@@ -4677,24 +4684,28 @@ function generateReceipt(stu, payment) {
   summaryItems.forEach(row => {
     doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(...muted);
     doc.text(row[0], 18, si);
-    doc.setFont("helvetica","bold"); doc.setTextColor(...dark);
-    doc.text(row[1], 55, si);
+    doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.setTextColor(...dark);
+    doc.text(row[1], 52, si);
     doc.setFont("helvetica","normal"); doc.setTextColor(...muted);
-    doc.text(row[2], 105, si);
+    doc.text(row[2], 80, si);
     doc.setFont("helvetica","bold"); doc.setTextColor(27,107,58);
-    doc.text(row[3], 120, si);
+    doc.text(row[3], 95, si);
     si += 7;
   });
 
-  // Total outstanding — only relevant years
+  // Balance due box (right) — same top and height as the fee summary box,
+  // starting after a clear 6mm gap so nothing overlaps.
+  const balX = 12 + sumBoxW + 6; // 130
+  const balW = (W - 12) - balX;  // to the same right margin as the table
   doc.setFillColor(...royal);
-  doc.roundedRect(130, sumY+6, 68, 24, 3, 3, "F");
+  doc.roundedRect(balX, sumY, balW, summaryBoxH, 3, 3, "F");
+  const balCX = balX + balW/2;
   doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.setTextColor(201,168,76);
-  doc.text("BALANCE DUE", 164, sumY+12, {align:"center"});
-  doc.setFontSize(7); doc.setTextColor(200,200,220);
-  doc.text("(current + arrears only)", 164, sumY+18, {align:"center"});
-  doc.setFontSize(16); doc.setTextColor(255,255,255);
-  doc.text(`Rs.${fmt(balance)}`, 164, sumY+27, {align:"center"});
+  doc.text("BALANCE DUE", balCX, sumY+9, {align:"center"});
+  doc.setFontSize(6.5); doc.setTextColor(200,200,220);
+  doc.text("(current + arrears only)", balCX, sumY+15, {align:"center"});
+  doc.setFont("helvetica","bold"); doc.setFontSize(20); doc.setTextColor(255,255,255);
+  doc.text(`Rs.${fmt(balance)}`, balCX, sumY+summaryBoxH-8, {align:"center"});
 
   // Watermark-style PAID stamp if balance is 0
   if (balance === 0) {
