@@ -11,6 +11,7 @@
 <!-- Firebase v10 compat (CDN) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <!-- jsPDF for PDF receipt generation -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <!-- QRCode.js for UPI QR -->
@@ -420,8 +421,8 @@ textarea.form-control{resize:vertical;min-height:80px}
       <div class="auth-card-body">
         <div id="loginAlert"></div>
         <div class="form-group">
-          <label>Application ID or Email <span class="required">*</span></label>
-          <input type="text" id="loginId" class="form-control" placeholder="Enter your Application ID or email">
+          <label>Application ID, Registration No. or Email <span class="required">*</span></label>
+          <input type="text" id="loginId" class="form-control" placeholder="Enter your Application ID, Registration No. or email">
         </div>
         <div class="form-group">
           <label>Password <span class="required">*</span></label>
@@ -1018,7 +1019,7 @@ textarea.form-control{resize:vertical;min-height:80px}
         <div class="d-flex gap-8 align-center">
           <button class="btn btn-gold btn-sm" onclick="openAdminAddStudent()">＋ Add Student</button>
           <div class="search-input-wrap">
-            <input type="text" id="adminSearch" placeholder="Search by name or App ID…" oninput="renderStudentTable()">
+            <input type="text" id="adminSearch" placeholder="Search by name, App ID, mobile or Reg. No…" oninput="renderStudentTable()">
           </div>
           <select id="adminFilterYear" class="form-control" style="width:auto;padding:8px 12px;font-size:0.85rem" onchange="renderStudentTable()">
             <option value="">All Years</option>
@@ -1027,11 +1028,11 @@ textarea.form-control{resize:vertical;min-height:80px}
         </div>
       </div>
       <div class="card-body" style="padding:0">
-        <div class="table-wrap" style="border:none;box-shadow:none;border-radius:0">
-          <table>
+        <div class="table-wrap" style="border:none;box-shadow:none;border-radius:0;overflow-x:auto">
+          <table style="min-width:1020px">
             <thead>
               <tr>
-                <th>App ID</th><th>Name</th><th>Programme</th><th>Year</th>
+                <th>App ID</th><th>Reg. No.</th><th>Name</th><th>Programme</th><th>Year</th>
                 <th>Mobile</th><th>Total Due</th><th>Status</th><th>Action</th>
               </tr>
             </thead>
@@ -1371,6 +1372,18 @@ async function initDB() {
     db = firebase.firestore();
     console.log("Firebase app initialized, Firestore instance obtained");
 
+    // Track real Firebase Authentication state (separate from the app's own
+    // localStorage session). Firebase persists this itself across reloads,
+    // so a restored admin session picks this back up automatically without
+    // needing the password again — this flag just mirrors it for the rest
+    // of the app to check before attempting an admin-only write.
+    if (firebase.auth) {
+      window._adminAuthReady = false;
+      firebase.auth().onAuthStateChanged(user => {
+        window._adminAuthReady = !!user;
+      });
+    }
+
     // Set up offline persistence with timeout
     console.log("Setting up offline persistence...");
     try {
@@ -1614,6 +1627,26 @@ const ADMIN_EMAIL = "pallavanppt86@gmail.com";
 // Hash of "PPT@1986" — generated once, safe to keep in source.
 const ADMIN_PWD_HASH = "096dbf584c35b17fbd25033677edb646f8aa712e9d1c59330b79a3534a78d9cf";
 let currentUser = null;
+
+// Friendly error for the two admin-only writes (Payment Settings & Fee
+// Structure) now gated by Firestore rules requiring real Firebase Auth —
+// without this, a permission-denied error would otherwise show up as a
+// confusing raw Firestore exception.
+function showAdminSaveBlockedMessage(e) {
+  const isPermission = e && (e.code === "permission-denied" || /permission/i.test(e.message||""));
+  if (isPermission) {
+    alert(
+      "Couldn't save — Payment Settings & Fee Structure now require the admin's Firebase Authentication " +
+      "account to be signed in, so a random visitor can't rewrite the UPI ID or fee amounts.\n\n" +
+      "If this is the first time you're seeing this: in Firebase Console → Authentication, add a user with " +
+      "email " + ADMIN_EMAIL + " and the same password you use to log into this admin panel. Then log out " +
+      "and back in here, and saving should work.\n\n" +
+      "If you already set that up, try logging out and back in — your session may need to refresh."
+    );
+  } else {
+    alert("Error: " + (e?.message || e));
+  }
+}
 
 // ── Password hashing (SHA-256 via Web Crypto API — built into every browser) ──
 // Toggle a password field between hidden dots and plain text, for any
@@ -1942,6 +1975,24 @@ async function doLogin() {
   // Admin login — compare against stored hash, never plain text
   const enteredHash = await sha256Hash(pwd);
   if (id===ADMIN_EMAIL && enteredHash===ADMIN_PWD_HASH) {
+    // Also sign in through real Firebase Authentication — this is what lets
+    // Firestore's security rules actually verify "this really is the admin"
+    // on Google's servers, instead of trusting a check that only runs in
+    // the browser (which anyone could bypass by talking to Firestore
+    // directly). This does NOT block getting into the admin panel if it
+    // fails — most of the admin panel doesn't need it — but Payment
+    // Settings & Fee Structure saves are now locked to this, so those
+    // will show a clear error until a matching Firebase Auth account
+    // exists for ADMIN_EMAIL. See window._adminAuthReady below.
+    window._adminAuthReady = false;
+    try {
+      if (typeof firebase !== "undefined" && firebase.auth) {
+        await firebase.auth().signInWithEmailAndPassword(ADMIN_EMAIL, pwd);
+        window._adminAuthReady = true;
+      }
+    } catch(authErr) {
+      console.warn("Admin Firebase Auth sign-in not set up yet:", authErr.message);
+    }
     currentUser = "admin";
     saveSession(currentUser);
     updateHeader();
@@ -1954,11 +2005,13 @@ async function doLogin() {
   try {
     const students = await DB.getStudents();
     const stu = students.find(s =>
-      s.appId.toLowerCase()===id.toLowerCase() || (s.email && s.email.toLowerCase()===id.toLowerCase())
+      s.appId.toLowerCase()===id.toLowerCase()
+      || (s.email && s.email.toLowerCase()===id.toLowerCase())
+      || (s.regNo && s.regNo.toLowerCase()===id.toLowerCase())
     );
     if (!stu) {
       setLoading(false);
-      showAlert("loginAlert","danger","Invalid credentials. Check your Application ID and password.");
+      showAlert("loginAlert","danger","Invalid credentials. Check your Application ID, Registration No. or email, and your password.");
       return;
     }
 
@@ -1979,7 +2032,7 @@ async function doLogin() {
 
     setLoading(false);
     if (!passwordMatches) {
-      showAlert("loginAlert","danger","Invalid credentials. Check your Application ID and password.");
+      showAlert("loginAlert","danger","Invalid credentials. Check your Application ID, Registration No. or email, and your password.");
       return;
     }
 
@@ -2006,6 +2059,9 @@ function doLogout() {
   document.getElementById("loginId").value="";
   document.getElementById("loginPwd").value="";
   showPage("pagLogin");
+  if (typeof firebase !== "undefined" && firebase.auth && firebase.auth().currentUser) {
+    firebase.auth().signOut().catch(()=>{});
+  }
 }
 
 // ═══════════════════════════════════
@@ -3804,14 +3860,18 @@ function renderStudentTable(cachedStudents) {
     const q  = (document.getElementById("adminSearch")?.value||"").toLowerCase();
     const fy = document.getElementById("adminFilterYear")?.value||"";
     const filtered = students.filter(s=>{
-      const mq = !q || s.name.toLowerCase().includes(q) || s.appId.toLowerCase().includes(q);
+      const mq = !q
+        || s.name.toLowerCase().includes(q)
+        || s.appId.toLowerCase().includes(q)
+        || (s.mobile && s.mobile.toLowerCase().includes(q))
+        || (s.regNo && s.regNo.toLowerCase().includes(q));
       const my = !fy || s.studyYear===fy;
       return mq&&my;
     });
     const tbody = document.getElementById("studentTableBody");
     if (!tbody) return;
     if (!filtered.length) {
-      tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-muted)">No students found.</td></tr>';
+      tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-muted)">No students found.</td></tr>';
       return;
     }
     tbody.innerHTML = filtered.map(s=>{
@@ -3825,6 +3885,7 @@ function renderStudentTable(cachedStudents) {
       const hasPend = (s.payments||[]).some(p=>p.status==="Pending Verification");
       return `<tr>
         <td class="muted">${escHtml(s.appId)}</td>
+        <td class="muted">${s.regNo ? escHtml(s.regNo) : '<span style="color:var(--text-muted);font-style:italic">—</span>'}</td>
         <td style="font-weight:500">${escHtml(s.name)}</td>
         <td class="muted" style="font-size:0.8rem">${escHtml((s.course||"").replace("Diploma in ",""))}</td>
         <td>${escHtml(autoYear)}</td>
@@ -3905,7 +3966,13 @@ async function savePaymentSettings() {
   const _cdo = parseInt(document.getElementById("acadCutoffDay")?.value);
   if (!isNaN(_cmo)) { s.acadCutoffMonth=_cmo; s.acadCutoffDay=_cdo||30; window._acadCutoff={month:_cmo,day:_cdo||30}; }
   setLoading(true,"Saving…");
-  await DB.setSettings(s);
+  try {
+    await DB.setSettings(s);
+  } catch(e) {
+    setLoading(false);
+    showAdminSaveBlockedMessage(e);
+    return;
+  }
   setLoading(false);
   document.getElementById("viewUpiId").innerHTML    = s.upiId    ? escHtml(s.upiId)    : '<em class="text-muted">Not set</em>';
   document.getElementById("viewAccNo").innerHTML    = s.accNo    ? escHtml(s.accNo)    : '<em class="text-muted">Not set</em>';
@@ -3989,7 +4056,13 @@ async function saveDefaultFees() {
   const fee2 = sumYearDefaultFees(s,2);
   const fee3 = sumYearDefaultFees(s,3);
   setLoading(true,"Saving fee structure & updating all students…");
-  await DB.setSettings(s);
+  try {
+    await DB.setSettings(s);
+  } catch(e) {
+    setLoading(false);
+    showAdminSaveBlockedMessage(e);
+    return;
+  }
 
   // Propagate annual fees to ALL existing students
   try {
