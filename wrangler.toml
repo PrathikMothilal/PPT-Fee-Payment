@@ -1,0 +1,6 @@
+name = "ppt-fee-portal-email"
+main = "index.js"
+compatibility_date = "2025-01-01"
+
+# BREVO_API_KEY is set as a secret (not here) via:
+#   wrangler secret put BREVO_API_KEY

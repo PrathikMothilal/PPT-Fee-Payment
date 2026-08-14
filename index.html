@@ -16,8 +16,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <!-- QRCode.js for UPI QR -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<!-- EmailJS -->
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<!-- Email now sent server-side via Cloud Functions (see functions/index.js) — no client SDK needed -->
+
 
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -1756,18 +1756,13 @@ function computeStudentDues(stu) {
   return { yn, currentDue, arrearDue, totalOutstanding, totalPaid, fees: f };
 }
 
-// ── EmailJS credentials (hardcoded — no admin setup needed) ──
-const EJS = {
-  publicKey:   "-US4TqL_g5wD-lHUF",
-  serviceId:   "pallavan_service",
-  tplAdmin:    "template_ag7ecr7",   // Admin payment alert
-  tplStudent:  "template_hlgvw5x",   // Student confirmed/rejected
-};
-// Initialise EmailJS once
-(function initEmailJS() {
-  try { emailjs.init(EJS.publicKey); console.log("✅ EmailJS ready"); }
-  catch(e) { console.warn("EmailJS init failed:", e.message); }
-})();
+// ── Email backend base URL (replaces EmailJS) ──
+// Hosted on Cloudflare Workers instead of Firebase Functions — no Blaze
+// (billing) plan required. After `wrangler deploy` from the
+// cloudflare-worker/ folder, Wrangler prints your live URL, which looks
+// like:  https://ppt-fee-portal-email.<your-subdomain>.workers.dev
+// Paste that here (no trailing slash).
+const CLOUD_FN_BASE = "https://ppt-fee-portal-email.YOUR-SUBDOMAIN.workers.dev";
 
 // ─── Loading ───
 function setLoading(show, msg="Loading…") {
@@ -4390,7 +4385,9 @@ async function submitAdminCashPayment() {
 }
 
 // ═══════════════════════════════════
-//  EMAIL — EmailJS (3 automated emails)
+//  EMAIL — Cloud Functions + Resend (3 automated emails)
+//  Same trigger points and same content/wording as the old EmailJS setup —
+//  just sent server-side now. See functions/index.js.
 // ═══════════════════════════════════
 
 function calcBalance(stu) {
@@ -4398,11 +4395,24 @@ function calcBalance(stu) {
   return computeStudentDues(stu).totalOutstanding;
 }
 
-// EMAIL 1 — Admin notification when student submits payment
+async function postToCloudFn(path, body) {
+  const res = await fetch(`${CLOUD_FN_BASE}/${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`${path} failed (${res.status}): ${text}`);
+  }
+  return res.json().catch(() => ({}));
+}
+
+// EMAIL 1 — Admin notification when student submits payment (needs verification)
 async function sendAdminNotificationEmail(stu, payment) {
   try {
     const balance = calcBalance(stu);
-    const params = {
+    await postToCloudFn("notifyPendingPayment", {
       student_name:  stu.name,
       app_id:        stu.appId,
       course:        stu.course,
@@ -4413,56 +4423,55 @@ async function sendAdminNotificationEmail(stu, payment) {
       reference_id:  payment.referenceId || "—",
       date_time:     formatDate(payment.date),
       balance_due:   fmt(balance),
-    };
-    await emailjs.send(EJS.serviceId, EJS.tplAdmin, params);
+    });
     console.log("✅ Admin notification email sent");
   } catch(e) {
     console.warn("Admin email failed (non-critical):", e.message);
   }
 }
 
-// EMAIL 2 & 3 — Student confirmed or rejected
+// EMAIL 2 & 3 — Student confirmed (+ admin copy w/ receipt) or student rejected
 async function sendStudentStatusEmail(stu, payment, status) {
-  if (!stu.email) {
-    console.log("Student has no email — skipping email notification");
+  const isConfirmed = status === "confirmed";
+
+  // Rejections only ever went to the student — if there's no email on file,
+  // there's nothing to send (matches the old EmailJS behaviour).
+  if (!isConfirmed && !stu.email) {
+    console.log("Student has no email — skipping rejection email");
     return;
   }
+
   try {
     const balance = calcBalance(stu);
-    const isConfirmed = status === "confirmed";
-
-    const params = {
-      student_email:    stu.email,
-      student_name:     stu.name,
-      app_id:           stu.appId,
-      course:           stu.course,
-      study_year:       stu.studyYear,
-      amount:           fmt(payment.amount),
-      payment_for:      payment.forLabel,
-      reference_id:     payment.referenceId || payment.receiptNo || "—",
-      date_time:        formatDate(isConfirmed ? (payment.confirmedAt||payment.date) : (payment.rejectedAt||payment.date)),
-      balance_due:      fmt(balance),
-      // Dynamic content — same template shows different content based on status
-      email_subject:    isConfirmed
-                          ? "✅ Payment Confirmed — ₹" + fmt(payment.amount)
-                          : "⚠️ Payment Not Verified — Please Contact College",
-      status_bg:        isConfirmed ? "#EAF5EE"  : "#FBF0F0",
-      status_color:     isConfirmed ? "#1B6B3A"  : "#8B1A1A",
-      status_message:   isConfirmed
-                          ? "✅ Your payment of ₹" + fmt(payment.amount) + " has been confirmed!"
-                          : "⚠️ Your payment of ₹" + fmt(payment.amount) + " could not be verified",
-      email_body_text:  isConfirmed
-                          ? "Your fee payment has been verified and confirmed by Pallavan Polytechnic College. Please find the details below."
-                          : "We were unable to verify your payment. This could be because the payment was not received in our account, or the amount did not match. Please contact the college office with your transaction screenshot.",
-      footer_note:      isConfirmed
-                          ? "📄 You can download your PDF receipt anytime by logging into the fee portal → Payment History → ⬇ Receipt button."
-                          : "📞 Please visit or contact Pallavan Polytechnic College, Kolivakkam with your UPI transaction screenshot for assistance.",
+    const shared = {
+      student_email: stu.email || "",
+      student_name:  stu.name,
+      app_id:        stu.appId,
+      course:        stu.course,
+      study_year:    stu.studyYear,
+      amount:        fmt(payment.amount),
+      payment_for:   payment.forLabel,
+      reference_id:  payment.referenceId || payment.receiptNo || "—",
+      date_time:     formatDate(isConfirmed ? (payment.confirmedAt||payment.date) : (payment.rejectedAt||payment.date)),
+      balance_due:   fmt(balance),
     };
 
-    await emailjs.send(EJS.serviceId, EJS.tplStudent, params);
-    console.log("✅ Student", status, "email sent to", stu.email);
+    if (isConfirmed) {
+      // Build the same PDF receipt used for manual downloads, as base64,
+      // so both the student and the admin get it attached automatically.
+      const receipt = generateReceipt(stu, payment, { download: false });
+      await postToCloudFn("notifyPaymentConfirmed", {
+        ...shared,
+        receipt_pdf_base64: receipt?.base64 || null,
+        receipt_filename:   receipt?.filename || `Receipt_${stu.appId}.pdf`,
+      });
+      console.log("✅ Confirmed-payment email sent to student + admin");
+    } else {
+      await postToCloudFn("notifyPaymentRejected", shared);
+      console.log("✅ Rejection email sent to", stu.email);
+    }
   } catch(e) {
-    console.warn("Student email failed (non-critical):", e.message);
+    console.warn("Student/admin status email failed (non-critical):", e.message);
   }
 }
 
@@ -4504,7 +4513,8 @@ const COLLEGE_SEAL_PNG_B64 = "iVBORw0KGgoAAAANSUhEUgAAASwAAAEsCAYAAAB5fY51AAEAAE
 // ═══════════════════════════════════
 //  PDF RECEIPT GENERATOR
 // ═══════════════════════════════════
-function generateReceipt(stu, payment) {
+function generateReceipt(stu, payment, opts = {}) {
+  const { download = true } = opts;
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation:"portrait", unit:"mm", format:"a4" });
   const W = 210, H = 297;
@@ -4753,8 +4763,15 @@ function generateReceipt(stu, payment) {
   doc.setTextColor(...royal);
   doc.text("Pallavan Educational Trust © " + new Date().getFullYear(), W/2, footY+22, {align:"center"});
 
-  // Save PDF
-  doc.save(`PPT_Receipt_${payment.receiptNo||"fee"}_${stu.appId}.pdf`);
+  // Save PDF, or hand back the raw bytes (base64) for emailing — same PDF
+  // either way, we just don't trigger a browser download when it's only
+  // needed as an email attachment.
+  const filename = `PPT_Receipt_${payment.receiptNo||"fee"}_${stu.appId}.pdf`;
+  if (download) {
+    doc.save(filename);
+    return null;
+  }
+  return { filename, base64: doc.output("datauristring").split(",")[1] };
 }
 
 // ─── Student Modal ───
