@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" href="favicon.jpg">
+<link rel="icon" type="image/png" href="favicon.png">
   <title>Pallavan Polytechnic College – Fee Payment Portal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3141,7 +3141,7 @@ function renderAnalyticsPieChart(catTotals, total) {
   if (entries.length === 1) {
     const [label, amt] = entries[0];
     const color = ANALYTICS_CATEGORY_COLORS[label] || "#5E2EA0";
-    slices = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}"><link rel="icon" href="favicon.jpg">
+    slices = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}"><link rel="icon" type="image/png" href="favicon.png">
   <title>${escHtml(label)}: ₹${fmt(amt)} (100%)</title></circle>`;
   } else {
     entries.forEach(([label, amt]) => {
@@ -3155,7 +3155,7 @@ function renderAnalyticsPieChart(catTotals, total) {
       const x2 = cx + r*Math.cos(angleEnd*Math.PI/180);
       const y2 = cy + r*Math.sin(angleEnd*Math.PI/180);
       slices += `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${large} 1 ${x2},${y2} Z" fill="${color}" stroke="#fff" stroke-width="1.5">
-        <link rel="icon" href="favicon.jpg">
+        <link rel="icon" type="image/png" href="favicon.png">
   <title>${escHtml(label)}: ₹${fmt(amt)} (${(pct*100).toFixed(1)}%)</title>
       </path>`;
       angleStart = angleEnd;
@@ -3289,8 +3289,7 @@ function renderTimeSeriesBarChart(timeSeriesData) {
 
         svg += `<rect class="ts-bar" x="${barX}" y="${barY}" width="${barW}" height="${Math.max(barH,0)}" rx="3" fill="${fill}"
           data-start="${d.start.getTime()}" data-end="${d.end.getTime()}" data-label="${escHtml(d.label)}">
-          <link rel="icon" href="favicon.jpg">
-  <title>Click to see who paid \u2014 ${escHtml(d.label)}</title>
+          <title>Click to see who paid \u2014 ${escHtml(d.label)}</title>
         </rect>`;
         svg += `<text x="${barX+barW/2}" y="${barY-8}" text-anchor="middle" font-size="12" font-weight="700" fill="#3D1A6E">\u20B9${fmt(d.amount)}</text>`;
         labelLines.forEach((line, li) => {
@@ -4492,28 +4491,38 @@ function generateReceipt(stu, payment, opts = {}) {
   doc.setLineWidth(0.2);
   doc.rect(12, 12, W - 24, 273);
 
-  // College Header
+  // Logo on the top left
+  try {
+    const logoImg = document.querySelector(".college-logo");
+    if (logoImg && logoImg.src) {
+      doc.addImage(logoImg.src, "JPEG", 20, 16, 20, 20);
+    }
+  } catch(e) {
+    console.warn("PDF logo embed skipped:", e);
+  }
+
+  // College Header (shifted slightly right to accommodate logo)
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
+  doc.setFontSize(15);
   doc.setTextColor(61, 26, 110);
-  doc.text("PALLAVAN POLYTECHNIC COLLEGE", W / 2, 24, { align: "center" });
+  doc.text("PALLAVAN POLYTECHNIC COLLEGE", 120, 22, { align: "center" });
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
+  doc.setFontSize(8.5);
   doc.setTextColor(100, 100, 100);
-  doc.text("Pallavan Educational Trust · AICTE Approved · College Code: 370", W / 2, 30, { align: "center" });
-  doc.text("Kolivakkam, Kanchipuram, Tamil Nadu – 631 502", W / 2, 35, { align: "center" });
+  doc.text("Pallavan Educational Trust · AICTE Approved · College Code: 370", 120, 28, { align: "center" });
+  doc.text("Kolivakkam, Kanchipuram, Tamil Nadu – 631 502", 120, 33, { align: "center" });
 
   // Divider line
   doc.setDrawColor(201, 168, 76);
   doc.setLineWidth(0.6);
-  doc.line(20, 39, W - 20, 39);
+  doc.line(20, 40, W - 20, 40);
 
   // Receipt Title Badge
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   doc.setTextColor(61, 26, 110);
-  doc.text("FEE PAYMENT RECEIPT", W / 2, 47, { align: "center" });
+  doc.text("FEE PAYMENT RECEIPT", W / 2, 48, { align: "center" });
 
   // Receipt meta (Receipt No & Date)
   doc.setFont("helvetica", "bold");
