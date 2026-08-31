@@ -389,7 +389,7 @@ textarea.form-control{resize:vertical;min-height:80px}
 <body>
 
 <!-- LOADING -->
-<div class="loading-overlay" id="loadingOverlay">
+<div class="loading-overlay hidden" id="loadingOverlay">
   <div class="loader-ring"></div>
   <p id="loadingMsg">Connecting to database…</p>
 </div>
@@ -1355,29 +1355,19 @@ let db = null;
 let useFirebase = false;
 
 async function initDB() {
-  // Fixed: Add timeouts to prevent hanging, better error diagnostics
-  setLoading(true, "Connecting to database…");
-  let dbInitSuccess = false;
-  let connectionError = null;
-
   try {
-    // Check if Firebase loaded correctly
     if (typeof firebase === 'undefined' || !firebase.apps) {
-      throw new Error('Firebase library failed to load - check network connection and CDN accessibility');
+      console.warn('Firebase library not loaded, using local storage.');
+      useFirebase = false;
+      return;
     }
 
     if (!firebase.apps.length) {
-      console.log("Initializing Firebase app...");
       firebase.initializeApp(firebaseConfig);
     }
     db = firebase.firestore();
-    console.log("Firebase app initialized, Firestore instance obtained");
+    useFirebase = true;
 
-    // Track real Firebase Authentication state (separate from the app's own
-    // localStorage session). Firebase persists this itself across reloads,
-    // so a restored admin session picks this back up automatically without
-    // needing the password again — this flag just mirrors it for the rest
-    // of the app to check before attempting an admin-only write.
     if (firebase.auth) {
       window._adminAuthReady = false;
       firebase.auth().onAuthStateChanged(user => {
@@ -1385,74 +1375,19 @@ async function initDB() {
       });
     }
 
-    // Set up offline persistence with timeout
-    console.log("Setting up offline persistence...");
+    // Enable persistence in background without blocking
     try {
-      await promiseWithTimeout(
-        db.enablePersistence({ synchronizeTabs: true }), 
-        5000 // 5 second timeout
-      );
-      console.log("Offline persistence enabled");
-    } catch (pe) {
-      // Persistence failure is non-fatal (e.g. multiple tabs, incognito)
-      console.warn("Persistence setup failed or timed out (continuing anyway):", pe.code || pe.message);
-    }
+      db.enablePersistence({ synchronizeTabs: true }).catch(pe => {
+        console.warn("Persistence note:", pe.code || pe.message);
+      });
+    } catch(e) {}
 
-    // Verify database connectivity with timeout
-    console.log("Verifying database connectivity...");
-    let settingsDoc;
-    try {
-      // Try to fetch from server with timeout
-      settingsDoc = await promiseWithTimeout(
-        db.collection('config').doc('settings').get({ source: 'server' }),
-        8000 // 8 second timeout for initial connection
-      );
-      console.log("Connected to Firestore server");
-    } catch (serverError) {
-      // Server failed or timed out, try cache
-      console.log("Server connection failed or timed out, trying cache...");
-      try {
-        settingsDoc = await promiseWithTimeout(
-          db.collection('config').doc('settings').get(),
-          5000 // 5 second timeout for cache
-        );
-        console.log("Connected to Firestore cache (offline mode)");
-      } catch (cacheError) {
-        // Both failed
-        throw new Error(`Unable to connect to Firestore: Server failed (${serverError.message}), Cache failed (${cacheError.message})`);
-      }
-    }
-
-    useFirebase = true;
-    console.log('✅ Firestore connected — project: ' + firebaseConfig.projectId);
-    dbInitSuccess = true;
+    console.log('✅ Firestore initialized — project: ' + firebaseConfig.projectId);
   } catch(e) {
-    console.warn('⚠️ Firestore connection failed:', e.message);
+    console.warn('⚠️ Firestore initialization failed:', e.message);
     useFirebase = false;
-    dbInitSuccess = false;
-    // Store the error for potential display to admin
-    connectionError = e;
   } finally {
-    // Always hide loading indicator and provide feedback
     setLoading(false);
-    
-    // If we have a connection error and we're in admin mode, show a more prominent warning
-    if (connectionError && currentUser === "admin") {
-      // Delay slightly to let UI settle, then show warning
-      setTimeout(() => {
-        showAlert("loginAlert", "warning", 
-          `Database connection issue: ${connectionError.message}
-` +
-          `The system will continue to work using local storage, but data may not sync across devices.
-` +
-          `Please contact IT if this persists.`);
-      }, 1000);
-    }
-  }
-
-  // Additional safety: if we somehow didn't set useFirebase, default to false
-  if (typeof useFirebase === 'undefined') {
-    useFirebase = false;
   }
 }
 
@@ -2048,8 +1983,8 @@ async function doLogin() {
       }
     }
 
-    setLoading(false);
     if (!passwordMatches) {
+      setLoading(false);
       showAlert("loginAlert","danger","Invalid credentials. Check your Application ID, Registration No. or email, and your password.");
       return;
     }
@@ -2063,10 +1998,12 @@ async function doLogin() {
         window._acadCutoff = { month: _ss.acadCutoffMonth, day: _ss.acadCutoffDay||30 };
     } catch(e) {}
     await renderStudentDash();
+    setLoading(false);
     showPage("pagStudent");
   } catch(e) {
     setLoading(false);
-    showAlert("loginAlert","danger","Connection error. Please try again.");
+    console.error("Login error:", e);
+    showAlert("loginAlert","danger","Connection error. Please try again. (" + (e.message || e) + ")");
   }
 }
 
