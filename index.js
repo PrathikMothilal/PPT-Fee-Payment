@@ -35,8 +35,8 @@ const FROM_EMAIL   = "pallavanppt86@gmail.com"; // must be verified as a sender 
 // custom domain if you add one later, localhost while testing, etc).
 // IMPORTANT: replace the GitHub Pages placeholder below with your real URL.
 const ALLOWED_ORIGINS = [
-  "https://YOUR-GITHUB-USERNAME.github.io", // ← replace with your real GitHub Pages origin
-  "http://localhost:5500",                  // convenient for local testing — remove if unused
+  "https://prathikmothilal.github.io", // your GitHub Pages origin (no path, no trailing slash)
+  "http://localhost:5500",             // convenient for local testing — remove if unused
 ];
 
 function corsHeadersFor(request) {
