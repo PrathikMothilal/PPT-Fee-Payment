@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pallavan Polytechnic College – Fee Payment Portal</title>
+<link rel="icon" href="favicon.jpg">
+  <title>Pallavan Polytechnic College – Fee Payment Portal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -3199,7 +3200,8 @@ function renderAnalyticsPieChart(catTotals, total) {
   if (entries.length === 1) {
     const [label, amt] = entries[0];
     const color = ANALYTICS_CATEGORY_COLORS[label] || "#5E2EA0";
-    slices = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}"><title>${escHtml(label)}: ₹${fmt(amt)} (100%)</title></circle>`;
+    slices = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}"><link rel="icon" href="favicon.jpg">
+  <title>${escHtml(label)}: ₹${fmt(amt)} (100%)</title></circle>`;
   } else {
     entries.forEach(([label, amt]) => {
       const pct = amt / total;
@@ -3212,7 +3214,8 @@ function renderAnalyticsPieChart(catTotals, total) {
       const x2 = cx + r*Math.cos(angleEnd*Math.PI/180);
       const y2 = cy + r*Math.sin(angleEnd*Math.PI/180);
       slices += `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${large} 1 ${x2},${y2} Z" fill="${color}" stroke="#fff" stroke-width="1.5">
-        <title>${escHtml(label)}: ₹${fmt(amt)} (${(pct*100).toFixed(1)}%)</title>
+        <link rel="icon" href="favicon.jpg">
+  <title>${escHtml(label)}: ₹${fmt(amt)} (${(pct*100).toFixed(1)}%)</title>
       </path>`;
       angleStart = angleEnd;
     });
@@ -3345,7 +3348,8 @@ function renderTimeSeriesBarChart(timeSeriesData) {
 
         svg += `<rect class="ts-bar" x="${barX}" y="${barY}" width="${barW}" height="${Math.max(barH,0)}" rx="3" fill="${fill}"
           data-start="${d.start.getTime()}" data-end="${d.end.getTime()}" data-label="${escHtml(d.label)}">
-          <title>Click to see who paid \u2014 ${escHtml(d.label)}</title>
+          <link rel="icon" href="favicon.jpg">
+  <title>Click to see who paid \u2014 ${escHtml(d.label)}</title>
         </rect>`;
         svg += `<text x="${barX+barW/2}" y="${barY-8}" text-anchor="middle" font-size="12" font-weight="700" fill="#3D1A6E">\u20B9${fmt(d.amount)}</text>`;
         labelLines.forEach((line, li) => {
@@ -4535,261 +4539,61 @@ const COLLEGE_SEAL_PNG_B64 = "iVBORw0KGgoAAAANSUhEUgAAASwAAAEsCAYAAAB5fY51AAEAAE
 function generateReceipt(stu, payment, opts = {}) {
   const { download = true } = opts;
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation:"portrait", unit:"mm", format:"a4" });
-  const W = 210, H = 297;
-  const royal = [61, 26, 110];
-  const gold  = [201, 168, 76];
-  const cream = [253, 250, 244];
-  const dark  = [26, 26, 46];
-  const muted = [122, 122, 154];
-
-  // Background
-  doc.setFillColor(...cream);
-  doc.rect(0, 0, W, H, "F");
-
-  // Top header bar
-  doc.setFillColor(...royal);
-  doc.rect(0, 0, W, 42, "F");
-
-  // Gold accent bar
-  doc.setFillColor(...gold);
-  doc.rect(0, 42, W, 2, "F");
-
-  // College seal — white circular badge behind the logo so the purple-ink
-  // artwork stays visible against the purple header instead of blending in.
-  doc.setFillColor(255,255,255);
-  doc.circle(25, 21, 15, "F");
-  doc.setDrawColor(...gold);
-  doc.setLineWidth(0.5);
-  doc.circle(25, 21, 15, "S");
-  doc.addImage(COLLEGE_SEAL_PNG_B64, "PNG", 12, 8, 26, 26);
-
-  // College name
-  doc.setFont("helvetica","bold");
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const W = 210;
+  
+  // Title
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
-  doc.setTextColor(255,255,255);
-  doc.text("PALLAVAN POLYTECHNIC COLLEGE", W/2, 16, {align:"center"});
-
-  doc.setFont("helvetica","normal");
-  doc.setFontSize(9);
-  doc.setTextColor(201,168,76);
-  doc.text("Pallavan Educational Trust · AICTE Approved · College Code: 370", W/2, 23, {align:"center"});
-
-  doc.setFontSize(8);
-  doc.setTextColor(200,200,220);
-  doc.text("Kolivakkam, Kanchipuram, Tamil Nadu – 631 502", W/2, 29, {align:"center"});
-
-  // Receipt title
-  doc.setFont("helvetica","bold");
-  doc.setFontSize(11);
-  doc.setTextColor(255,255,255);
-  doc.text("FEE PAYMENT RECEIPT", W/2, 37, {align:"center"});
-
-  // Receipt info box (top right)
-  doc.setFillColor(240, 235, 255);
-  doc.roundedRect(130, 50, 68, 28, 3, 3, "F");
-  doc.setDrawColor(...royal);
-  doc.setLineWidth(0.4);
-  doc.roundedRect(130, 50, 68, 28, 3, 3, "S");
-
-  doc.setFont("helvetica","bold");
-  doc.setFontSize(7.5);
-  doc.setTextColor(...royal);
-  doc.text("RECEIPT NO.", 134, 57);
-  doc.setFont("helvetica","bold");
-  doc.setFontSize(9.5);
-  doc.text(payment.receiptNo || "—", 134, 63);
-
-  doc.setFont("helvetica","normal");
-  doc.setFontSize(7.5);
-  doc.setTextColor(...muted);
-  doc.text("DATE OF PAYMENT", 134, 70);
-  doc.setFont("helvetica","bold");
-  doc.setTextColor(...dark);
-  doc.setFontSize(8);
-  doc.text(formatDate(payment.confirmedAt||payment.date), 134, 76);
-
-  // Student details section
-  doc.setFillColor(255,255,255);
-  doc.roundedRect(12, 50, 112, 28, 3, 3, "F");
-  doc.setDrawColor(...royal);
-  doc.setLineWidth(0.3);
-  doc.roundedRect(12, 50, 112, 28, 3, 3, "S");
-
-  // Purple left accent
-  doc.setFillColor(...royal);
-  doc.roundedRect(12, 50, 3, 28, 1.5, 1.5, "F");
-
-  doc.setFont("helvetica","bold");
-  doc.setFontSize(7);
-  doc.setTextColor(...muted);
-  doc.text("STUDENT DETAILS", 19, 57);
-
-  doc.setFont("helvetica","bold");
+  doc.text("PALLAVAN POLYTECHNIC COLLEGE", W/2, 20, {align: "center"});
+  
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  doc.setTextColor(...dark);
-  doc.text(stu.name.toUpperCase(), 19, 64);
-
-  doc.setFont("helvetica","normal");
-  doc.setFontSize(8);
-  doc.setTextColor(...muted);
-  doc.text(`App ID: ${stu.appId}  ·  ${stu.studyYear}  ·  Admitted: ${stu.admYear}`, 19, 70);
-  doc.text(stu.course, 19, 75);
-
-  // Payment details table
-  const tableY = 88;
-  // Table header
-  doc.setFillColor(...royal);
-  doc.rect(12, tableY, W-24, 9, "F");
-  doc.setFont("helvetica","bold");
-  doc.setFontSize(8);
-  doc.setTextColor(255,255,255);
-  doc.text("DESCRIPTION", 18, tableY+6);
-  doc.text("DETAILS", 100, tableY+6);
-  doc.text("AMOUNT", 175, tableY+6, {align:"right"});
-
-  const _fMap={"app":"Application Fee","tuition":"Tuition Fee","record":"Record Note","exam":"Exam Fee","examfine":"Exam fees with fine","nodues":"No dues form","misc":"Miscellaneous","idcard":"ID card","book":"Book"};
-  const _fLabel = _fMap[payment.forLabel] || payment.forLabel || "Fee Payment";
-  // Payments recorded by the admin (cash/cheque/DD/other, collected in
-  // person) carry an explicit payment.method. Payments the student makes
-  // themselves through the UPI flow don't set this field, so default to
-  // "UPI Transfer" only when method is absent.
-  const _methodMap = {"Cash":"Cash","Cheque":"Cheque","DD":"Demand Draft","Other":"Other"};
-  const _methodLabel = payment.method ? (_methodMap[payment.method] || payment.method) : "UPI Transfer";
-  const rows = [
-    ["Payment For",         _fLabel,                                            ""],
-    ["Amount Paid",         "",                                                 `Rs. ${fmt(payment.amount)}`],
-    ["Payment Method",      _methodLabel,                                       ""],
-    ["Payment Status",      "CONFIRMED",                                       ""],
-    ["Mobile",              stu.mobile,                                        ""],
-    ["Programme",           stu.course,                                        ""],
-  ];
-
-  let rowY = tableY + 9;
-  rows.forEach((row, i) => {
-    doc.setFillColor(i%2===0 ? 255 : 248, i%2===0 ? 255 : 245, i%2===0 ? 255 : 255);
-    doc.rect(12, rowY, W-24, 9, "F");
-    doc.setDrawColor(230, 224, 240);
-    doc.setLineWidth(0.2);
-    doc.line(12, rowY+9, W-12, rowY+9);
-
-    doc.setFont("helvetica","bold");
-    doc.setFontSize(7.5);
-    doc.setTextColor(...muted);
-    doc.text(row[0], 18, rowY+6);
-
-    doc.setFont("helvetica","normal");
-    doc.setTextColor(...dark);
-    doc.text(row[1], 100, rowY+6);
-
-    if (row[2]) {
-      doc.setFont("helvetica","bold");
-      doc.setTextColor(...royal);
-      doc.setFontSize(13);
-      doc.text(row[2], 175, rowY+6.5, {align:"right"});
-    }
-    rowY += 9;
-  });
-
-  // Fee summary box — drawn dynamically based on year count below
-  const sumY = rowY + 8;
-
-  // Only show years the student has REACHED — no future year fees in receipt
-  const { yn: stuYn, totalOutstanding: balance, fees: f } = computeStudentDues(stu);
-  const yearLabels = ["1st Year Fee:", "2nd Year Fee:", "3rd Year Fee:"];
-  const yearKeys   = ["year1", "year2", "year3"];
-  const summaryItems = [];
-  for (let i = 0; i < stuYn; i++) {
-    const yk = yearKeys[i];
-    summaryItems.push([
-      yearLabels[i],
-      `Rs.${fmt(f[yk]?.due||0)}`,
-      "Paid:",
-      `Rs.${fmt(f[yk]?.paid||0)}`
-    ]);
-  }
-
-  // Resize summary box height based on number of rows shown — both the fee
-  // summary box and the balance-due box below share this exact height so
-  // their borders always line up, and a floor keeps the balance box tall
-  // enough for its three lines of text even with only one fee year.
-  const summaryBoxH = Math.max(33, 14 + summaryItems.length * 7);
-
-  // Fee summary box (left) — narrower than before so its content never
-  // runs under the balance-due box, with a clear gap between the two.
-  const sumBoxW = 112; // 12 → 124
-  doc.setFillColor(240, 235, 255);
-  doc.roundedRect(12, sumY, sumBoxW, summaryBoxH, 3, 3, "F");
-  doc.setDrawColor(...royal);
-  doc.setLineWidth(0.4);
-  doc.roundedRect(12, sumY, sumBoxW, summaryBoxH, 3, 3, "S");
-
-  doc.setFont("helvetica","bold");
-  doc.setFontSize(8);
-  doc.setTextColor(...royal);
-  doc.text("FEE SUMMARY", 18, sumY+8);
-
-  let si = sumY + 15;
-  summaryItems.forEach(row => {
-    doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(...muted);
-    doc.text(row[0], 18, si);
-    doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.setTextColor(...dark);
-    doc.text(row[1], 52, si);
-    doc.setFont("helvetica","normal"); doc.setTextColor(...muted);
-    doc.text(row[2], 80, si);
-    doc.setFont("helvetica","bold"); doc.setTextColor(27,107,58);
-    doc.text(row[3], 95, si);
-    si += 7;
-  });
-
-  // Balance due box (right) — same top and height as the fee summary box,
-  // starting after a clear 6mm gap so nothing overlaps.
-  const balX = 12 + sumBoxW + 6; // 130
-  const balW = (W - 12) - balX;  // to the same right margin as the table
-  doc.setFillColor(...royal);
-  doc.roundedRect(balX, sumY, balW, summaryBoxH, 3, 3, "F");
-  const balCX = balX + balW/2;
-  doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.setTextColor(201,168,76);
-  doc.text("BALANCE DUE", balCX, sumY+9, {align:"center"});
-  doc.setFontSize(6.5); doc.setTextColor(200,200,220);
-  doc.text("(current + arrears only)", balCX, sumY+15, {align:"center"});
-  doc.setFont("helvetica","bold"); doc.setFontSize(20); doc.setTextColor(255,255,255);
-  doc.text(`Rs.${fmt(balance)}`, balCX, sumY+summaryBoxH-8, {align:"center"});
-
-  // Watermark-style PAID stamp if balance is 0
-  if (balance === 0) {
-    doc.setFont("helvetica","bold");
-    doc.setFontSize(48);
-    doc.setTextColor(27, 107, 58);
-    doc.setGState(new doc.GState({opacity:0.12}));
-    doc.text("PAID", W/2, H/2+20, {align:"center", angle:30});
-    doc.setGState(new doc.GState({opacity:1}));
-  }
-
-  // Footer
-  const footY = H - 30;
-  doc.setFillColor(...royal);
-  doc.rect(0, footY, W, 1, "F");
-
-  doc.setFont("helvetica","italic");
-  doc.setFontSize(7.5);
-  doc.setTextColor(...muted);
-  doc.text("This is a computer-generated receipt and does not require a physical signature.", W/2, footY+8, {align:"center"});
-  doc.text("For queries contact: Pallavan Polytechnic College, Kolivakkam, Kanchipuram, Tamil Nadu", W/2, footY+14, {align:"center"});
-
-  doc.setFont("helvetica","bold");
-  doc.setFontSize(7);
-  doc.setTextColor(...royal);
-  doc.text("Pallavan Educational Trust © " + new Date().getFullYear(), W/2, footY+22, {align:"center"});
-
-  // Save PDF, or hand back the raw bytes (base64) for emailing — same PDF
-  // either way, we just don't trigger a browser download when it's only
-  // needed as an email attachment.
-  const filename = `PPT_Receipt_${payment.receiptNo||"fee"}_${stu.appId}.pdf`;
+  doc.text("Fee Payment Receipt", W/2, 28, {align: "center"});
+  
+  // Draw line
+  doc.setLineWidth(0.5);
+  doc.line(20, 35, 190, 35);
+  
+  // Details
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("Student Details:", 20, 50);
+  
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  doc.text(`Name: ${stu.name || "-"}`, 25, 60);
+  doc.text(`Register No: ${stu.regNo || "-"}`, 25, 68);
+  doc.text(`Department: ${stu.dept || "-"}`, 25, 76);
+  doc.text(`Year: ${stu.year || "-"}`, 25, 84);
+  
+  doc.setFont("helvetica", "bold");
+  doc.text("Payment Details:", 20, 100);
+  
+  doc.setFont("helvetica", "normal");
+  doc.text(`Receipt No: ${payment.receiptNo || "-"}`, 25, 110);
+  doc.text(`Transaction ID: ${payment.transactionId || "-"}`, 25, 118);
+  const dateStr = payment.confirmedAt ? new Date(payment.confirmedAt).toLocaleDateString() : (payment.date ? new Date(payment.date).toLocaleDateString() : "-");
+  doc.text(`Date: ${dateStr}`, 25, 126);
+  doc.text(`Amount Paid: Rs. ${payment.amount || "-"}`, 25, 134);
+  doc.text(`Term: ${payment.term || "-"}`, 25, 142);
+  
+  // Draw line
+  doc.setLineWidth(0.5);
+  doc.line(20, 155, 190, 155);
+  
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(10);
+  doc.text("This is a computer-generated receipt and does not require a signature.", W/2, 170, {align: "center"});
+  
   if (download) {
-    doc.save(filename);
-    return null;
+    const safeName = (stu.name || "Student").replace(/[^a-zA-Z0-9]/g, "_");
+    const safeTerm = (payment.term || "Term").replace(/[^a-zA-Z0-9]/g, "_");
+    doc.save(`Receipt_${safeName}_${safeTerm}.pdf`);
   }
+  
+  return doc.output('bloburl');
+}
   return { filename, base64: doc.output("datauristring").split(",")[1] };
 }
 
