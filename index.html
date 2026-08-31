@@ -1623,9 +1623,13 @@ const DB = {
 //  APP STATE
 // ═══════════════════════════════════
 const ADMIN_EMAIL = "pallavanppt86@gmail.com";
-// Admin password is stored as a SHA-256 hash, never in plain text.
-// Hash of "PPT@1986" — generated once, safe to keep in source.
-const ADMIN_PWD_HASH = "096dbf584c35b17fbd25033677edb646f8aa712e9d1c59330b79a3534a78d9cf";
+// Admin identity is now verified ENTIRELY by Firebase Authentication — no
+// password hash of any kind lives in this file anymore. Previously a
+// SHA-256 hash of the admin password was checked here first (before ever
+// calling Firebase Auth), but that hash sat in plain sight in the page's
+// source code for anyone to copy and brute-force offline. Firebase Auth
+// already re-validates the real password against Google's servers, so the
+// local hash added no real protection — only real risk.
 let currentUser = null;
 
 // Friendly error for the two admin-only writes (Payment Settings & Fee
@@ -1763,6 +1767,13 @@ function computeStudentDues(stu) {
 // like:  https://ppt-fee-portal-email.<your-subdomain>.workers.dev
 // Paste that here (no trailing slash).
 const CLOUD_FN_BASE = "https://ppt-fee-payment.pallavanppt86.workers.dev";
+
+// Shared secret sent with every request to the Worker above — must match
+// PPT_SHARED_SECRET set via `wrangler secret put PPT_SHARED_SECRET`.
+// This is a speed bump against casual abuse, not real security (anyone who
+// views this page's source can read it too) — see the comment in
+// cloudflare-worker/index.js for what it does and doesn't protect against.
+const CLOUD_FN_SECRET = "REPLACE-WITH-A-LONG-RANDOM-STRING";
 
 // ─── Loading ───
 function setLoading(show, msg="Loading…") {
@@ -1967,27 +1978,36 @@ async function doLogin() {
   clearAlert("loginAlert");
   if (!id||!pwd) { showAlert("loginAlert","danger","Please enter both credentials."); return; }
 
-  // Admin login — compare against stored hash, never plain text
-  const enteredHash = await sha256Hash(pwd);
-  if (id===ADMIN_EMAIL && enteredHash===ADMIN_PWD_HASH) {
-    // Also sign in through real Firebase Authentication — this is what lets
-    // Firestore's security rules actually verify "this really is the admin"
-    // on Google's servers, instead of trusting a check that only runs in
-    // the browser (which anyone could bypass by talking to Firestore
-    // directly). This does NOT block getting into the admin panel if it
-    // fails — most of the admin panel doesn't need it — but Payment
-    // Settings & Fee Structure saves are now locked to this, so those
-    // will show a clear error until a matching Firebase Auth account
-    // exists for ADMIN_EMAIL. See window._adminAuthReady below.
-    window._adminAuthReady = false;
+  // Admin login — verified entirely by Firebase Authentication now (no
+  // locally-stored password hash to compare against — see the note above
+  // ADMIN_EMAIL for why that was removed).
+  if (id === ADMIN_EMAIL) {
+    setLoading(true, "Signing in…");
     try {
-      if (typeof firebase !== "undefined" && firebase.auth) {
-        await firebase.auth().signInWithEmailAndPassword(ADMIN_EMAIL, pwd);
-        window._adminAuthReady = true;
+      if (typeof firebase === "undefined" || !firebase.auth) {
+        setLoading(false);
+        showAlert("loginAlert","danger","Admin login isn't available right now (Firebase Auth not loaded). Please try again shortly.");
+        return;
       }
-    } catch(authErr) {
-      console.warn("Admin Firebase Auth sign-in not set up yet:", authErr.message);
+      await firebase.auth().signInWithEmailAndPassword(ADMIN_EMAIL, pwd);
+      window._adminAuthReady = true;
+    } catch (authErr) {
+      setLoading(false);
+      // auth/user-not-found means nobody has set up the Firebase Auth
+      // account for ADMIN_EMAIL yet — give a clear one-time setup pointer
+      // instead of a generic "wrong password" message.
+      if (authErr.code === "auth/user-not-found" || authErr.code === "auth/invalid-credential" && !window._adminAuthEverSucceeded) {
+        showAlert("loginAlert","danger",
+          "Admin sign-in failed. If this is the first time logging in, make sure a Firebase Authentication " +
+          "account exists for " + ADMIN_EMAIL + " (Firebase Console → Authentication → Add user) with this " +
+          "exact password, then try again.");
+      } else {
+        showAlert("loginAlert","danger","Invalid admin credentials.");
+      }
+      return;
     }
+    setLoading(false);
+    window._adminAuthEverSucceeded = true;
     currentUser = "admin";
     saveSession(currentUser);
     updateHeader();
@@ -4395,7 +4415,7 @@ function calcBalance(stu) {
 async function postToCloudFn(path, body) {
   const res = await fetch(`${CLOUD_FN_BASE}/${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-PPT-Secret": CLOUD_FN_SECRET },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
