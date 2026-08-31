@@ -1347,8 +1347,7 @@ const firebaseConfig = {
 };
 
 // ═══════════════════════════════════
-//  DB: Firebase Firestore (cloud, cross-device)
-//  Falls back to localStorage only if Firebase is completely unreachable
+//  DB: Firebase Firestore (cloud, cross-device) with automatic LocalStorage sync & fallback
 // ═══════════════════════════════════
 
 let db = null;
@@ -1384,95 +1383,78 @@ async function initDB() {
 
     console.log('✅ Firestore initialized — project: ' + firebaseConfig.projectId);
   } catch(e) {
-    console.warn('⚠️ Firestore initialization failed:', e.message);
+    console.warn('⚠️ Firestore initialization fallback to local storage:', e.message);
     useFirebase = false;
   } finally {
     setLoading(false);
   }
 }
 
+// ─── Promise Timeout Helper ───
+function promiseWithTimeout(promise, ms) {
+  const timer = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error(`Operation timed out after ${ms}ms`)), ms);
+  });
+  return Promise.race([promise, timer]);
+}
+
 // ─── Firestore helpers ───
 async function fsGetDoc(col, docId, forceServer=false) {
+  if (!db) return null;
   try {
     const opts = forceServer ? { source: "server" } : {};
-    // Add timeout to prevent hanging
     const snap = await promiseWithTimeout(
       db.collection(col).doc(docId).get(opts),
-      forceServer ? 8000 : 5000 // 8s for server, 5s for cache
+      forceServer ? 5000 : 3000
     );
     return snap.exists ? { id: snap.id, ...snap.data() } : null;
   } catch(e) {
-    // Fall back to cache if server fails (only if we were trying server)
     if (forceServer) {
       try {
         const snap = await promiseWithTimeout(
           db.collection(col).doc(docId).get(),
-          5000 // 5 second timeout for cache fallback
+          3000
         );
         return snap.exists ? { id: snap.id, ...snap.data() } : null;
       } catch(cacheError) {
-        // If cache also fails, return null (let caller handle error)
-        console.warn(`fsGetDoc fallback failed: ${cacheError.message}`);
         return null;
       }
-    } else {
-      // We were already trying cache, just return null on failure
-      console.warn(`fsGetDoc cache lookup failed: ${e.message}`);
-      return null;
     }
+    return null;
   }
 }
+
 async function fsSetDoc(col, docId, data) {
+  if (!db) return;
   await db.collection(col).doc(docId).set(data, { merge: true });
 }
+
 async function fsGetAll(col) {
+  if (!db) return [];
   try {
-    // Add timeout to prevent hanging
     const snap = await promiseWithTimeout(
       db.collection(col).get(),
-      10000 // 10 second timeout for collection fetch
+      6000
     );
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch(e) {
-    console.warn(`fsGetAll failed: ${e.message}`);
-    return []; // Return empty array on failure
+    console.warn(`fsGetAll(${col}) failed: ${e.message}`);
+    return [];
   }
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
+
 async function fsDeleteDoc(col, docId) {
+  if (!db) return;
   await db.collection(col).doc(docId).delete();
 }
 
 // ─── localStorage helpers ───
 const LS = {
-  get: k => { try { return JSON.parse(localStorage.getItem(k)) } catch { return null } },
-  set: (k,v) => localStorage.setItem(k, JSON.stringify(v)),
+  get: k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set: (k,v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
 
-// ─── Promise Timeout Helper ───
-// Returns a promise that rejects if the input promise doesn't settle within ms milliseconds
-function promiseWithTimeout(promise, ms) {
-    // Create a promise that rejects in <ms> milliseconds
-    const timer = new Promise((resolve, reject) => {
-        setTimeout(() => reject(new Error(`Operation timed out after ${ms}ms`)), ms);
-    });
-    // Return a race between the original promise and the timer
-    return Promise.race([
-        promise,
-        timer
-    ]);
-}
-
-// Alternative: a version that resolves with a special value on timeout (for cases where we want to handle timeout gracefully)
-function promiseWithTimeoutOrDefault(promise, ms, defaultValue) {
-    return promiseWithTimeout(promise, ms).catch(() => defaultValue);
-}
-
-
 // ─── Unified DB API ───
-// Categories the admin sets a default amount for, per year (6 categories).
-// "Exam fees with fine", "No dues form" and "Miscellaneous" are ad-hoc / variable
-// amounts and intentionally have no preset default.
 const FEE_DEFAULT_CATEGORIES = [
   { key: "App",      label: "Application Fee" },
   { key: "Tuition",  label: "Tuition Fee" },
@@ -1481,76 +1463,98 @@ const FEE_DEFAULT_CATEGORIES = [
   { key: "Id",       label: "ID card" },
   { key: "Book",     label: "Book" }
 ];
-// The 3 ad-hoc / variable-amount categories from the student "Payment For"
-// dropdown. They have no *global* admin default (see note above), but the
-// per-student fee modal still lets the admin set an individual price for
-// them if needed — same as any other category.
+
 const AD_HOC_FEE_CATEGORIES = [
   { key: "ExamFine", label: "Exam fees with fine" },
   { key: "NoDues",   label: "No dues form" },
   { key: "Misc",     label: "Miscellaneous" }
 ];
-// Every category shown on the student payment page, in the same order as
-// that dropdown — used for the per-student fee editor and the payment cap lookup.
+
 const ALL_FEE_CATEGORIES = [
   FEE_DEFAULT_CATEGORIES[0], FEE_DEFAULT_CATEGORIES[1], FEE_DEFAULT_CATEGORIES[2], FEE_DEFAULT_CATEGORIES[3],
   AD_HOC_FEE_CATEGORIES[0], AD_HOC_FEE_CATEGORIES[1], AD_HOC_FEE_CATEGORIES[2],
   FEE_DEFAULT_CATEGORIES[4], FEE_DEFAULT_CATEGORIES[5]
 ];
+
 function defaultFeeSettings() {
   const s = { upiId:"", accNo:"" };
   [1,2,3].forEach(yr => FEE_DEFAULT_CATEGORIES.forEach(c => { s["defFee"+yr+c.key] = 0; }));
   return s;
 }
-// Sum of all category defaults for a given year (1, 2 or 3) — this is the
-// student's total due amount for that year.
+
 function sumYearDefaultFees(settings, yr) {
+  if (!settings) return 0;
   return FEE_DEFAULT_CATEGORIES.reduce((sum, c) => sum + (settings["defFee"+yr+c.key] || 0), 0);
 }
 
 const DB = {
   async getStudents() {
-    if (useFirebase) {
-      return await fsGetAll("students");
+    if (useFirebase && db) {
+      try {
+        const list = await fsGetAll("students");
+        if (list && list.length > 0) {
+          LS.set("ppt_students", list);
+          return list;
+        }
+      } catch(e) {}
     }
     return LS.get("ppt_students") || [];
   },
   async getStudent(appId, forceServer=true) {
-    if (useFirebase) {
-      return await fsGetDoc("students", appId.toLowerCase(), forceServer);
+    if (!appId) return null;
+    if (useFirebase && db) {
+      try {
+        const doc = await fsGetDoc("students", appId.toLowerCase(), forceServer);
+        if (doc) return doc;
+      } catch(e) {}
     }
-    return (LS.get("ppt_students")||[]).find(s=>s.appId===appId) || null;
+    const arr = LS.get("ppt_students") || [];
+    return arr.find(s => s.appId && s.appId.toLowerCase() === appId.toLowerCase()) || null;
   },
   async setStudent(stu) {
-    if (useFirebase) {
-      await fsSetDoc("students", stu.appId.toLowerCase(), stu);
-    } else {
-      let arr = LS.get("ppt_students") || [];
-      const idx = arr.findIndex(s=>s.appId===stu.appId);
-      if (idx>=0) arr[idx]=stu; else arr.push(stu);
-      LS.set("ppt_students", arr);
+    let arr = LS.get("ppt_students") || [];
+    const idx = arr.findIndex(s => s.appId && s.appId.toLowerCase() === stu.appId.toLowerCase());
+    if (idx >= 0) arr[idx] = stu; else arr.push(stu);
+    LS.set("ppt_students", arr);
+
+    if (useFirebase && db) {
+      try {
+        await fsSetDoc("students", stu.appId.toLowerCase(), stu);
+      } catch(e) {
+        console.warn("Firestore setStudent:", e.message);
+      }
     }
   },
   async deleteStudent(appId) {
-    if (useFirebase) {
-      await fsDeleteDoc("students", appId.toLowerCase());
-    } else {
-      let arr = (LS.get("ppt_students")||[]).filter(s=>s.appId!==appId);
-      LS.set("ppt_students", arr);
+    let arr = (LS.get("ppt_students") || []).filter(s => s.appId && s.appId.toLowerCase() !== appId.toLowerCase());
+    LS.set("ppt_students", arr);
+
+    if (useFirebase && db) {
+      try {
+        await fsDeleteDoc("students", appId.toLowerCase());
+      } catch(e) {}
     }
   },
   async getSettings() {
-    if (useFirebase) {
-      const s = await fsGetDoc("config","settings");
-      return s || defaultFeeSettings();
+    if (useFirebase && db) {
+      try {
+        const s = await fsGetDoc("config","settings");
+        if (s) {
+          LS.set("ppt_settings", s);
+          return s;
+        }
+      } catch(e) {}
     }
     return LS.get("ppt_settings") || defaultFeeSettings();
   },
   async setSettings(s) {
-    if (useFirebase) {
-      await fsSetDoc("config","settings", s);
-    } else {
-      LS.set("ppt_settings", s);
+    LS.set("ppt_settings", s);
+    if (useFirebase && db) {
+      try {
+        await fsSetDoc("config","settings", s);
+      } catch(e) {
+        console.warn("Firestore setSettings:", e.message);
+      }
     }
   }
 };
@@ -4478,59 +4482,183 @@ function generateReceipt(stu, payment, opts = {}) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const W = 210;
-  
-  // Title
+
+  // Outer border
+  doc.setDrawColor(61, 26, 110);
+  doc.setLineWidth(0.5);
+  doc.rect(10, 10, W - 20, 277);
+
+  // Inner border
+  doc.setLineWidth(0.2);
+  doc.rect(12, 12, W - 24, 273);
+
+  // College Header
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
-  doc.text("PALLAVAN POLYTECHNIC COLLEGE", W/2, 20, {align: "center"});
-  
+  doc.setTextColor(61, 26, 110);
+  doc.text("PALLAVAN POLYTECHNIC COLLEGE", W / 2, 24, { align: "center" });
+
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text("Fee Payment Receipt", W/2, 28, {align: "center"});
-  
-  // Draw line
-  doc.setLineWidth(0.5);
-  doc.line(20, 35, 190, 35);
-  
-  // Details
+  doc.setFontSize(9);
+  doc.setTextColor(100, 100, 100);
+  doc.text("Pallavan Educational Trust · AICTE Approved · College Code: 370", W / 2, 30, { align: "center" });
+  doc.text("Kolivakkam, Kanchipuram, Tamil Nadu – 631 502", W / 2, 35, { align: "center" });
+
+  // Divider line
+  doc.setDrawColor(201, 168, 76);
+  doc.setLineWidth(0.6);
+  doc.line(20, 39, W - 20, 39);
+
+  // Receipt Title Badge
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
-  doc.text("Student Details:", 20, 50);
-  
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(11);
-  doc.text(`Name: ${stu.name || "-"}`, 25, 60);
-  doc.text(`Register No: ${stu.regNo || "-"}`, 25, 68);
-  doc.text(`Department: ${stu.dept || "-"}`, 25, 76);
-  doc.text(`Year: ${stu.year || "-"}`, 25, 84);
-  
+  doc.setTextColor(61, 26, 110);
+  doc.text("FEE PAYMENT RECEIPT", W / 2, 47, { align: "center" });
+
+  // Receipt meta (Receipt No & Date)
   doc.setFont("helvetica", "bold");
-  doc.text("Payment Details:", 20, 100);
-  
-  doc.setFont("helvetica", "normal");
-  doc.text(`Receipt No: ${payment.receiptNo || "-"}`, 25, 110);
-  doc.text(`Transaction ID: ${payment.transactionId || "-"}`, 25, 118);
-  const dateStr = payment.confirmedAt ? new Date(payment.confirmedAt).toLocaleDateString() : (payment.date ? new Date(payment.date).toLocaleDateString() : "-");
-  doc.text(`Date: ${dateStr}`, 25, 126);
-  doc.text(`Amount Paid: Rs. ${payment.amount || "-"}`, 25, 134);
-  doc.text(`Term: ${payment.term || "-"}`, 25, 142);
-  
-  // Draw line
-  doc.setLineWidth(0.5);
-  doc.line(20, 155, 190, 155);
-  
-  doc.setFont("helvetica", "italic");
+  doc.setFontSize(9);
+  doc.setTextColor(50, 50, 50);
+  doc.text(`Receipt No: ${payment.receiptNo || "—"}`, 20, 57);
+  doc.text(`Date: ${formatDate(payment.confirmedAt || payment.date)}`, W - 20, 57, { align: "right" });
+
+  // Horizontal line
+  doc.setDrawColor(220, 220, 220);
+  doc.setLineWidth(0.3);
+  doc.line(20, 61, W - 20, 61);
+
+  // Student Details Box
+  doc.setFillColor(250, 250, 252);
+  doc.rect(20, 66, W - 40, 38, "F");
+  doc.setDrawColor(220, 220, 225);
+  doc.rect(20, 66, W - 40, 38, "S");
+
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.text("This is a computer-generated receipt and does not require a signature.", W/2, 170, {align: "center"});
-  
+  doc.setTextColor(61, 26, 110);
+  doc.text("STUDENT DETAILS", 25, 73);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(60, 60, 60);
+  doc.text(`Name:`, 25, 80);
+  doc.setFont("helvetica", "bold");
+  doc.text(`${(stu.name || "—").toUpperCase()}`, 55, 80);
+
+  doc.setFont("helvetica", "normal");
+  doc.text(`Application ID:`, 25, 87);
+  doc.setFont("helvetica", "bold");
+  doc.text(`${stu.appId || "—"}`, 55, 87);
+
+  doc.setFont("helvetica", "normal");
+  doc.text(`Reg. No:`, 115, 87);
+  doc.setFont("helvetica", "bold");
+  doc.text(`${stu.regNo || "—"}`, 140, 87);
+
+  doc.setFont("helvetica", "normal");
+  doc.text(`Course:`, 25, 94);
+  doc.setFont("helvetica", "bold");
+  doc.text(`${stu.course || "—"} (${stu.studyYear || "—"})`, 55, 94);
+
+  doc.setFont("helvetica", "normal");
+  doc.text(`Mobile:`, 25, 101);
+  doc.setFont("helvetica", "bold");
+  doc.text(`${stu.mobile || "—"}`, 55, 101);
+
+  // Payment Details Table
+  const tableY = 112;
+  doc.setFillColor(61, 26, 110);
+  doc.rect(20, tableY, W - 40, 8, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(255, 255, 255);
+  doc.text("DESCRIPTION", 25, tableY + 5.5);
+  doc.text("DETAILS", 95, tableY + 5.5);
+  doc.text("AMOUNT (INR)", W - 25, tableY + 5.5, { align: "right" });
+
+  const payRows = [
+    ["Payment For", payment.forLabel || "Fee Payment", ""],
+    ["Payment Mode", payment.method || "UPI Transfer", ""],
+    ["Transaction / Ref ID", payment.referenceId || "—", ""],
+    ["Payment Status", "CONFIRMED / PAID", ""],
+    ["Total Amount Paid", "", `Rs. ${fmt(payment.amount)}`]
+  ];
+
+  let curY = tableY + 8;
+  payRows.forEach((r, idx) => {
+    doc.setFillColor(idx % 2 === 0 ? 255 : 248, idx % 2 === 0 ? 255 : 248, idx % 2 === 0 ? 255 : 252);
+    doc.rect(20, curY, W - 40, 8, "F");
+    doc.setDrawColor(220, 220, 230);
+    doc.line(20, curY + 8, W - 20, curY + 8);
+    doc.line(20, curY, 20, curY + 8);
+    doc.line(W - 20, curY, W - 20, curY + 8);
+
+    doc.setFont("helvetica", r[2] ? "bold" : "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(50, 50, 50);
+    doc.text(r[0], 25, curY + 5.5);
+
+    if (r[1]) {
+      doc.setFont("helvetica", r[0] === "Payment Status" ? "bold" : "normal");
+      if (r[0] === "Payment Status") doc.setTextColor(27, 107, 58);
+      else doc.setTextColor(50, 50, 50);
+      doc.text(r[1], 95, curY + 5.5);
+    }
+
+    if (r[2]) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(61, 26, 110);
+      doc.text(r[2], W - 25, curY + 6, { align: "right" });
+    }
+    curY += 8;
+  });
+
+  // Balance info
+  const dues = computeStudentDues(stu);
+  const balY = curY + 8;
+  doc.setFillColor(245, 245, 250);
+  doc.rect(20, balY, W - 40, 16, "F");
+  doc.setDrawColor(220, 220, 230);
+  doc.rect(20, balY, W - 40, 16, "S");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(61, 26, 110);
+  doc.text("Remaining Balance Due:", 25, balY + 7);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  const balColor = dues.totalOutstanding === 0 ? [27, 107, 58] : [139, 26, 26];
+  doc.setTextColor(...balColor);
+  doc.text(dues.totalOutstanding === 0 ? "NIL (Cleared)" : `Rs. ${fmt(dues.totalOutstanding)}`, 85, balY + 7);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(120, 120, 120);
+  doc.text(`Total Paid across all years: Rs. ${fmt(dues.totalPaid)}`, 25, balY + 13);
+
+  // Footer Note
+  const footY = 250;
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.4);
+  doc.line(20, footY, W - 20, footY);
+
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(8);
+  doc.setTextColor(120, 120, 120);
+  doc.text("This is a system-generated receipt issued by Pallavan Polytechnic College.", W / 2, footY + 6, { align: "center" });
+  doc.text("No physical signature is required.", W / 2, footY + 11, { align: "center" });
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(61, 26, 110);
+  doc.text("Pallavan Educational Trust © " + new Date().getFullYear(), W / 2, footY + 18, { align: "center" });
+
+  const filename = `PPT_Receipt_${payment.receiptNo || "fee"}_${stu.appId}.pdf`;
   if (download) {
-    const safeName = (stu.name || "Student").replace(/[^a-zA-Z0-9]/g, "_");
-    const safeTerm = (payment.term || "Term").replace(/[^a-zA-Z0-9]/g, "_");
-    doc.save(`Receipt_${safeName}_${safeTerm}.pdf`);
+    doc.save(filename);
+    return null;
   }
-  
-  return doc.output('bloburl');
-}
   return { filename, base64: doc.output("datauristring").split(",")[1] };
 }
 
