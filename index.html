@@ -53,6 +53,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--text-d
 /* PAGES */
 .page{display:none}.page.active{display:block}
 
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+.shake { animation: shake 0.35s ease-in-out; }
+
 /* LOADING OVERLAY */
 .loading-overlay{position:fixed;inset:0;background:rgba(42,16,80,0.85);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
 .loading-overlay.hidden{display:none}
@@ -423,12 +431,12 @@ textarea.form-control{resize:vertical;min-height:80px}
         <div id="loginAlert"></div>
         <div class="form-group">
           <label>Application ID, Registration No. or Email <span class="required">*</span></label>
-          <input type="text" id="loginId" class="form-control" placeholder="Enter your Application ID, Registration No. or email">
+          <input type="text" id="loginId" class="form-control" placeholder="Enter your Application ID, Registration No. or email" oninput="this.classList.remove('is-invalid'); clearAlert('loginAlert');">
         </div>
         <div class="form-group">
           <label>Password <span class="required">*</span></label>
           <div class="pwd-field">
-            <input type="password" id="loginPwd" class="form-control" placeholder="Enter your password">
+            <input type="password" id="loginPwd" class="form-control" placeholder="Enter your password" oninput="this.classList.remove('is-invalid'); clearAlert('loginAlert');">
             <button type="button" class="pwd-toggle-btn" onclick="togglePwdVisibility('loginPwd', this)" aria-label="Show password">Show</button>
           </div>
         </div>
@@ -624,96 +632,93 @@ textarea.form-control{resize:vertical;min-height:80px}
           </div>
         </div>
 
-        <div class="section-divider">Parent / Guardian Details</div>
+        <div class="section-divider">Parent &amp; Guardian Details</div>
 
-        <!-- Parent / Guardian sub-tabs -->
-        <div class="reg-subtab-nav">
-          <button type="button" class="reg-subtab-btn active" id="regSubtabBtn-parent" onclick="switchRegSubtab('parent')">👨‍👩‍👦 Parent Details</button>
-          <button type="button" class="reg-subtab-btn" id="regSubtabBtn-guardian" onclick="switchRegSubtab('guardian')">🧑‍🤝‍🧑 Guardian Details</button>
-        </div>
-
-        <!-- Parent Details panel -->
-        <div class="reg-subtab-panel active" id="regSubtabPanel-parent">
-          <div class="form-grid-2">
-            <div class="form-group">
-              <label>Father's Name <span class="required">*</span></label>
-              <input type="text" id="rFatherName" class="form-control" placeholder="FATHER'S FULL NAME"
-                oninput="this.value=this.value.toUpperCase()"
-                onblur="validateField('rFatherName','Father's name is required')">
-              <div class="field-error" id="err-rFatherName"></div>
-            </div>
-            <div class="form-group">
-              <label>Father's Mobile <span class="required">*</span></label>
-              <input type="tel" id="rFatherMobile" class="form-control" placeholder="10-digit number" maxlength="10"
-                oninput="this.value=this.value.replace(/\D/g,''); liveValidateMobile(this,'err-rFatherMobile')"
-                onblur="validateMobile('rFatherMobile','err-rFatherMobile')">
-              <div class="field-error" id="err-rFatherMobile"></div>
-            </div>
-            <div class="form-group">
-              <label>Mother's Name <span class="required">*</span></label>
-              <input type="text" id="rMotherName" class="form-control" placeholder="MOTHER'S FULL NAME"
-                oninput="this.value=this.value.toUpperCase()"
-                onblur="validateField('rMotherName','Mother's name is required')">
-              <div class="field-error" id="err-rMotherName"></div>
-            </div>
-            <div class="form-group">
-              <label>Mother's Mobile <span class="required">*</span></label>
-              <input type="tel" id="rMotherMobile" class="form-control" placeholder="10-digit number" maxlength="10"
-                oninput="this.value=this.value.replace(/\D/g,''); liveValidateMobile(this,'err-rMotherMobile')"
-                onblur="validateMobile('rMotherMobile','err-rMotherMobile')">
-              <div class="field-error" id="err-rMotherMobile"></div>
-            </div>
-            <div class="form-group">
-              <label>Father's Occupation <span class="required">*</span></label>
-              <input type="text" id="rFatherOccupation" class="form-control" placeholder="e.g. Farmer, Business, Employee"
-                oninput="this.value=this.value.toUpperCase()"
-                onblur="validateField('rFatherOccupation','Father\'s occupation is required')">
-              <div class="field-error" id="err-rFatherOccupation"></div>
-            </div>
-            <div class="form-group">
-              <label>Mother's Occupation <span class="required">*</span></label>
-              <input type="text" id="rMotherOccupation" class="form-control" placeholder="e.g. Homemaker, Business, Employee"
-                oninput="this.value=this.value.toUpperCase()"
-                onblur="validateField('rMotherOccupation','Mother\'s occupation is required')">
-              <div class="field-error" id="err-rMotherOccupation"></div>
-            </div>
+        <!-- Parent Details -->
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label>Father's Name <span class="required">*</span></label>
+            <input type="text" id="rFatherName" class="form-control" placeholder="FATHER'S FULL NAME"
+              oninput="this.value=this.value.toUpperCase()"
+              onblur="validateField('rFatherName','Father\'s name is required')">
+            <div class="field-error" id="err-rFatherName"></div>
+          </div>
+          <div class="form-group">
+            <label>Father's Mobile <span class="required">*</span></label>
+            <input type="tel" id="rFatherMobile" class="form-control" placeholder="10-digit number" maxlength="10"
+              oninput="this.value=this.value.replace(/\D/g,''); liveValidateMobile(this,'err-rFatherMobile')"
+              onblur="validateMobile('rFatherMobile','err-rFatherMobile')">
+            <div class="field-error" id="err-rFatherMobile"></div>
+          </div>
+          <div class="form-group">
+            <label>Mother's Name <span class="required">*</span></label>
+            <input type="text" id="rMotherName" class="form-control" placeholder="MOTHER'S FULL NAME"
+              oninput="this.value=this.value.toUpperCase()"
+              onblur="validateField('rMotherName','Mother\'s name is required')">
+            <div class="field-error" id="err-rMotherName"></div>
+          </div>
+          <div class="form-group">
+            <label>Mother's Mobile <span class="required">*</span></label>
+            <input type="tel" id="rMotherMobile" class="form-control" placeholder="10-digit number" maxlength="10"
+              oninput="this.value=this.value.replace(/\D/g,''); liveValidateMobile(this,'err-rMotherMobile')"
+              onblur="validateMobile('rMotherMobile','err-rMotherMobile')">
+            <div class="field-error" id="err-rMotherMobile"></div>
+          </div>
+          <div class="form-group">
+            <label>Father's Occupation <span class="required">*</span></label>
+            <input type="text" id="rFatherOccupation" class="form-control" placeholder="e.g. Farmer, Business, Employee"
+              oninput="this.value=this.value.toUpperCase()"
+              onblur="validateField('rFatherOccupation','Father\'s occupation is required')">
+            <div class="field-error" id="err-rFatherOccupation"></div>
+          </div>
+          <div class="form-group">
+            <label>Mother's Occupation <span class="required">*</span></label>
+            <input type="text" id="rMotherOccupation" class="form-control" placeholder="e.g. Homemaker, Business, Employee"
+              oninput="this.value=this.value.toUpperCase()"
+              onblur="validateField('rMotherOccupation','Mother\'s occupation is required')">
+            <div class="field-error" id="err-rMotherOccupation"></div>
           </div>
         </div>
 
-        <!-- Guardian Details panel -->
-        <div class="reg-subtab-panel" id="regSubtabPanel-guardian">
-          <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:14px">
-            Fill this in only if a guardian (other than parents) is responsible for the student. <span class="optional">(optional)</span>
+        <!-- Guardian Details -->
+        <div style="margin-top:20px;padding-top:16px;border-top:1px dashed var(--border)">
+          <div style="margin-bottom:12px">
+            <strong style="color:var(--royal);font-size:0.92rem">🧑‍🤝‍🧑 Guardian Details <span class="optional" style="font-weight:normal;color:var(--text-muted);font-size:0.8rem">(Optional — if any field is filled, all guardian fields are required)</span></strong>
           </div>
           <div class="form-grid-2">
             <div class="form-group">
-              <label>Guardian's Name <span class="optional">(optional)</span></label>
+              <label>Guardian's Name</label>
               <input type="text" id="rGuardianName" class="form-control" placeholder="GUARDIAN'S FULL NAME"
-                oninput="this.value=this.value.toUpperCase()">
+                oninput="this.value=this.value.toUpperCase(); checkGuardianFields()"
+                onblur="checkGuardianFields()">
               <div class="field-error" id="err-rGuardianName"></div>
             </div>
             <div class="form-group">
-              <label>Relationship to Student <span class="optional">(optional)</span></label>
+              <label>Relationship to Student</label>
               <input type="text" id="rGuardianRelation" class="form-control" placeholder="e.g. Uncle, Elder Brother"
-                oninput="this.value=this.value.toUpperCase()">
+                oninput="this.value=this.value.toUpperCase(); checkGuardianFields()"
+                onblur="checkGuardianFields()">
               <div class="field-error" id="err-rGuardianRelation"></div>
             </div>
             <div class="form-group">
-              <label>Guardian's Mobile <span class="optional">(optional)</span></label>
+              <label>Guardian's Mobile</label>
               <input type="tel" id="rGuardianMobile" class="form-control" placeholder="10-digit number" maxlength="10"
-                oninput="this.value=this.value.replace(/\D/g,''); liveValidateMobile(this,'err-rGuardianMobile')">
+                oninput="this.value=this.value.replace(/\D/g,''); liveValidateMobile(this,'err-rGuardianMobile'); checkGuardianFields()"
+                onblur="checkGuardianFields()">
               <div class="field-error" id="err-rGuardianMobile"></div>
             </div>
             <div class="form-group">
-              <label>Guardian's Address <span class="optional">(optional)</span></label>
+              <label>Guardian's Address</label>
               <input type="text" id="rGuardianAddress" class="form-control" placeholder="Door No., Street, Area"
-                oninput="this.value=this.value.toUpperCase()">
+                oninput="this.value=this.value.toUpperCase(); checkGuardianFields()"
+                onblur="checkGuardianFields()">
               <div class="field-error" id="err-rGuardianAddress"></div>
             </div>
-            <div class="form-group">
-              <label>Guardian's Occupation <span class="optional">(optional)</span></label>
-              <input type="text" id="rGuardianOccupation" class="form-control" placeholder="e.g. Farmer, Business, Employee"
-                oninput="this.value=this.value.toUpperCase()">
+            <div class="form-group" style="grid-column:1/-1">
+              <label>Guardian's Occupation</label>
+              <input type="text" id="rGuardianOccupation" class="form-control" placeholder="e.g. Business, Farmer, Employee"
+                oninput="this.value=this.value.toUpperCase(); checkGuardianFields()"
+                onblur="checkGuardianFields()">
               <div class="field-error" id="err-rGuardianOccupation"></div>
             </div>
           </div>
@@ -722,15 +727,17 @@ textarea.form-control{resize:vertical;min-height:80px}
         <div class="section-divider">Bank Details</div>
         <div class="form-grid-2">
           <div class="form-group">
-            <label>Account Number <span class="optional">(optional)</span></label>
+            <label>Account Number <span class="required">*</span></label>
             <input type="text" id="rAccountNumber" class="form-control" placeholder="Bank account number"
-              oninput="this.value=this.value.replace(/\D/g,'')">
+              oninput="this.value=this.value.replace(/\D/g,'')"
+              onblur="validateField('rAccountNumber','Bank account number is required')">
             <div class="field-error" id="err-rAccountNumber"></div>
           </div>
           <div class="form-group">
-            <label>IFSC Code <span class="optional">(optional)</span></label>
+            <label>IFSC Code <span class="required">*</span></label>
             <input type="text" id="rIfscCode" class="form-control" placeholder="e.g. SBIN0001234" maxlength="11"
-              oninput="this.value=this.value.toUpperCase()">
+              oninput="this.value=this.value.toUpperCase()"
+              onblur="validateIfsc()">
             <div class="field-error" id="err-rIfscCode"></div>
           </div>
         </div>
@@ -1798,6 +1805,31 @@ function initDobField() {
   initDobSelectors();
 }
 
+
+function checkGuardianFields() {
+  const gName = (document.getElementById("rGuardianName")?.value || "").trim();
+  const gRel  = (document.getElementById("rGuardianRelation")?.value || "").trim();
+  const gMob  = (document.getElementById("rGuardianMobile")?.value || "").trim();
+  const gAddr = (document.getElementById("rGuardianAddress")?.value || "").trim();
+  const gOcc  = (document.getElementById("rGuardianOccupation")?.value || "").trim();
+
+  const hasAny = Boolean(gName || gRel || gMob || gAddr || gOcc);
+  if (!hasAny) {
+    clearFieldError("err-rGuardianName");
+    clearFieldError("err-rGuardianRelation");
+    clearFieldError("err-rGuardianMobile");
+    clearFieldError("err-rGuardianAddress");
+    clearFieldError("err-rGuardianOccupation");
+  }
+}
+
+function validateIfsc() {
+  const val = (document.getElementById("rIfscCode")?.value || "").trim().toUpperCase();
+  if (!val) { setFieldError("err-rIfscCode", "IFSC code is required"); return false; }
+  if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(val)) { setFieldError("err-rIfscCode", "Enter valid 11-char IFSC code (e.g. SBIN0001234)"); return false; }
+  clearFieldError("err-rIfscCode"); return true;
+}
+
 function validateDob() {
   assembleDob();
   const val = document.getElementById("rDob")?.value;
@@ -1913,36 +1945,66 @@ async function validateAppId() {
 //  LOGIN
 // ═══════════════════════════════════
 async function doLogin() {
-  const id  = document.getElementById("loginId").value.trim();
-  const pwd = document.getElementById("loginPwd").value;
-  clearAlert("loginAlert");
-  if (!id||!pwd) { showAlert("loginAlert","danger","Please enter both credentials."); return; }
+  const idEl = document.getElementById("loginId");
+  const pwdEl = document.getElementById("loginPwd");
+  const cardEl = document.querySelector("#pagLogin .auth-card");
+  const id  = (idEl?.value || "").trim();
+  const pwd = pwdEl?.value || "";
 
-  // Admin login — verified entirely by Firebase Authentication now (no
-  // locally-stored password hash to compare against — see the note above
-  // ADMIN_EMAIL for why that was removed).
-  if (id === ADMIN_EMAIL) {
-    setLoading(true, "Signing in…");
+  // Reset visual error state
+  clearAlert("loginAlert");
+  idEl?.classList.remove("is-invalid");
+  pwdEl?.classList.remove("is-invalid");
+  if (cardEl) cardEl.classList.remove("shake");
+
+  function triggerLoginError(msg, targetEl) {
+    showAlert("loginAlert", "danger", msg);
+    if (targetEl) {
+      targetEl.classList.add("is-invalid");
+      targetEl.focus();
+      if (typeof targetEl.select === "function") targetEl.select();
+    }
+    if (cardEl) {
+      cardEl.classList.remove("shake");
+      void cardEl.offsetWidth; // trigger reflow for animation
+      cardEl.classList.add("shake");
+    }
+  }
+
+  // Validate presence of credentials
+  if (!id && !pwd) {
+    triggerLoginError("Please enter your Application ID / Email and Password to sign in.", idEl);
+    return;
+  }
+  if (!id) {
+    triggerLoginError("Please enter your Application ID, Registration No. or Email.", idEl);
+    return;
+  }
+  if (!pwd) {
+    triggerLoginError("Please enter your password.", pwdEl);
+    return;
+  }
+
+  // Admin login flow
+  if (id.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+    setLoading(true, "Signing in as administrator…");
     try {
       if (typeof firebase === "undefined" || !firebase.auth) {
         setLoading(false);
-        showAlert("loginAlert","danger","Admin login isn't available right now (Firebase Auth not loaded). Please try again shortly.");
+        triggerLoginError("Admin login is temporarily unavailable (Firebase Auth service not ready). Please try again shortly.", pwdEl);
         return;
       }
       await firebase.auth().signInWithEmailAndPassword(ADMIN_EMAIL, pwd);
       window._adminAuthReady = true;
     } catch (authErr) {
       setLoading(false);
-      // auth/user-not-found means nobody has set up the Firebase Auth
-      // account for ADMIN_EMAIL yet — give a clear one-time setup pointer
-      // instead of a generic "wrong password" message.
-      if (authErr.code === "auth/user-not-found" || authErr.code === "auth/invalid-credential" && !window._adminAuthEverSucceeded) {
-        showAlert("loginAlert","danger",
-          "Admin sign-in failed. If this is the first time logging in, make sure a Firebase Authentication " +
-          "account exists for " + ADMIN_EMAIL + " (Firebase Console → Authentication → Add user) with this " +
-          "exact password, then try again.");
+      if (authErr.code === "auth/user-not-found" || (authErr.code === "auth/invalid-credential" && !window._adminAuthEverSucceeded)) {
+        triggerLoginError(
+          "Admin sign-in failed. If this is your first time, please ensure a Firebase Authentication user exists for <strong>" + ADMIN_EMAIL + "</strong> with this password, then try again.",
+          pwdEl
+        );
       } else {
-        showAlert("loginAlert","danger","Invalid admin credentials.");
+        triggerLoginError("Incorrect admin password. Please check your credentials and try again.", pwdEl);
       }
       return;
     }
@@ -1956,17 +2018,23 @@ async function doLogin() {
     return;
   }
 
-  setLoading(true,"Signing in…");
+  // Student login flow
+  setLoading(true, "Signing in…");
   try {
     const students = await DB.getStudents();
     const stu = students.find(s =>
-      s.appId.toLowerCase()===id.toLowerCase()
-      || (s.email && s.email.toLowerCase()===id.toLowerCase())
-      || (s.regNo && s.regNo.toLowerCase()===id.toLowerCase())
+      (s.appId && s.appId.toLowerCase() === id.toLowerCase()) ||
+      (s.email && s.email.toLowerCase() === id.toLowerCase()) ||
+      (s.regNo && s.regNo.toLowerCase() === id.toLowerCase())
     );
+
     if (!stu) {
       setLoading(false);
-      showAlert("loginAlert","danger","Invalid credentials. Check your Application ID, Registration No. or email, and your password.");
+      triggerLoginError(
+        "<strong>Account Not Found:</strong> No student record found for '<strong>" + escHtml(id) + "</strong>'.<br>" +
+        "Please check your Application ID, Registration No. or Email and try again. If you haven't registered yet, click <strong>Create an account</strong> below.",
+        idEl
+      );
       return;
     }
 
@@ -1974,14 +2042,12 @@ async function doLogin() {
 
     let passwordMatches = false;
     if (stu.passwordHash) {
-      // New-style hashed password
       passwordMatches = (stu.passwordHash === enteredHash);
     } else if (stu.password) {
-      // Legacy plaintext password — verify, then silently migrate to a hash
       passwordMatches = (stu.password === pwd);
       if (passwordMatches) {
         stu.passwordHash = enteredHash;
-        delete stu.password; // remove plaintext permanently
+        delete stu.password;
         await DB.setStudent(stu);
         console.log("🔒 Migrated", stu.appId, "to hashed password");
       }
@@ -1989,7 +2055,10 @@ async function doLogin() {
 
     if (!passwordMatches) {
       setLoading(false);
-      showAlert("loginAlert","danger","Invalid credentials. Check your Application ID, Registration No. or email, and your password.");
+      triggerLoginError(
+        "<strong>Incorrect Password:</strong> The password you entered is incorrect. Please try again.",
+        pwdEl
+      );
       return;
     }
 
@@ -1999,15 +2068,19 @@ async function doLogin() {
     try {
       const _ss = await DB.getSettings();
       if (_ss.acadCutoffMonth !== undefined)
-        window._acadCutoff = { month: _ss.acadCutoffMonth, day: _ss.acadCutoffDay||30 };
+        window._acadCutoff = { month: _ss.acadCutoffMonth, day: _ss.acadCutoffDay || 30 };
     } catch(e) {}
+
     await renderStudentDash();
     setLoading(false);
     showPage("pagStudent");
   } catch(e) {
     setLoading(false);
     console.error("Login error:", e);
-    showAlert("loginAlert","danger","Connection error. Please try again. (" + (e.message || e) + ")");
+    triggerLoginError(
+      "<strong>Connection Error:</strong> Unable to process sign in. Please check your network and try again. (" + (e.message || e) + ")",
+      null
+    );
   }
 }
 
@@ -2090,12 +2163,14 @@ async function doRegister() {
     { key:"schoolAddress", label:"School Address" },
     { key:"schoolDistrict",label:"School District" },
     { key:"schoolPincode", label:"School Pincode" },
+    { key:"accountNumber", label:"Bank Account Number" },
+    { key:"ifscCode",      label:"IFSC Code" },
   ];
   const parentTabFields = ["fatherName","fatherMobile","motherName","motherMobile","fatherOccupation","motherOccupation"];
   for (const field of requiredFields) {
     if (!f[field.key]) {
       showAlert("registerAlert","danger",`Please fill in <strong>${field.label}</strong>.`);
-      if (parentTabFields.includes(field.key)) switchRegSubtab("parent");
+      // Field is always visible
       // Scroll to the field
       const el = document.getElementById("r" + field.key.charAt(0).toUpperCase() + field.key.slice(1))
                || document.getElementById("r" + field.key)
@@ -2122,22 +2197,60 @@ async function doRegister() {
     showAlert("registerAlert","danger","Mother's mobile number must be exactly 10 digits.");
     setFieldError("err-rMotherMobile","Must be exactly 10 digits"); return;
   }
-  // Guardian mobile is optional, but if entered it must be a valid 10-digit number
-  if (f.guardianMobile && !/^\d{10}$/.test(f.guardianMobile)) {
-    showAlert("registerAlert","danger","Guardian's mobile number must be exactly 10 digits.");
-    setFieldError("err-rGuardianMobile","Must be exactly 10 digits");
-    switchRegSubtab("guardian");
-    return;
+  // Guardian details: completely optional, but if ANY 1 field is entered, ALL 5 fields must be completed.
+  const hasAnyGuardian = Boolean(
+    (f.guardianName || "").trim() ||
+    (f.guardianRelation || "").trim() ||
+    (f.guardianMobile || "").trim() ||
+    (f.guardianAddress || "").trim() ||
+    (f.guardianOccupation || "").trim()
+  );
+
+  if (hasAnyGuardian) {
+    const guardianChecks = [
+      { key: "guardianName",       label: "Guardian's Name",       elId: "rGuardianName",       errId: "err-rGuardianName" },
+      { key: "guardianRelation",   label: "Relationship to Student", elId: "rGuardianRelation",   errId: "err-rGuardianRelation" },
+      { key: "guardianMobile",     label: "Guardian's Mobile",     elId: "rGuardianMobile",     errId: "err-rGuardianMobile" },
+      { key: "guardianAddress",    label: "Guardian's Address",    elId: "rGuardianAddress",    errId: "err-rGuardianAddress" },
+      { key: "guardianOccupation", label: "Guardian's Occupation", elId: "rGuardianOccupation", errId: "err-rGuardianOccupation" },
+    ];
+
+    for (const gc of guardianChecks) {
+      const val = (f[gc.key] || "").trim();
+      if (!val) {
+        showAlert("registerAlert", "danger", `Since guardian details are provided, please fill in <strong>${gc.label}</strong>.`);
+        setFieldError(gc.errId, `${gc.label} is required`);
+        const el = document.getElementById(gc.elId);
+        if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.focus(); }
+        return;
+      }
+    }
+
+    if (!/^\d{10}$/.test(f.guardianMobile)) {
+      showAlert("registerAlert", "danger", "Guardian's mobile number must be exactly 10 digits.");
+      setFieldError("err-rGuardianMobile", "Must be exactly 10 digits");
+      const el = document.getElementById("rGuardianMobile");
+      if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.focus(); }
+      return;
+    }
   }
   // Aadhar validation
   if (!/^\d{12}$/.test(f.aadhar)) {
     showAlert("registerAlert","danger","Aadhar number must be exactly 12 digits.");
     setFieldError("err-rAadhar","Must be exactly 12 digits"); return;
   }
-  // IFSC code is optional, but if entered it must match the standard format
-  if (f.ifscCode && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(f.ifscCode)) {
-    showAlert("registerAlert","danger","Please enter a valid IFSC code (e.g. SBIN0001234).");
-    setFieldError("err-rIfscCode","Enter a valid IFSC code"); return;
+  // Bank Account & IFSC validation (mandatory)
+  if (!f.accountNumber || f.accountNumber.length < 9) {
+    showAlert("registerAlert","danger","Please enter a valid Bank Account Number (minimum 9 digits).");
+    setFieldError("err-rAccountNumber","Valid account number is required");
+    document.getElementById("rAccountNumber")?.scrollIntoView({ behavior:"smooth", block:"center" });
+    return;
+  }
+  if (!f.ifscCode || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(f.ifscCode)) {
+    showAlert("registerAlert","danger","Please enter a valid 11-character IFSC code (e.g. SBIN0001234).");
+    setFieldError("err-rIfscCode","Valid 11-character IFSC code is required");
+    document.getElementById("rIfscCode")?.scrollIntoView({ behavior:"smooth", block:"center" });
+    return;
   }
   // Pincode validation
   if (!/^\d{6}$/.test(f.schoolPincode)) {
@@ -2349,7 +2462,7 @@ function resetRegisterForm() {
   if (stateEl) stateEl.value = "Tamil Nadu";
   container.querySelectorAll(".field-error").forEach(el=>el.textContent="");
   clearAlert("registerAlert");
-  switchRegSubtab("parent");
+  
   // Restore default heading (in case admin mode had changed it)
   const titleEl = document.getElementById("registerHeadTitle");
   const subEl = document.getElementById("registerHeadSubtitle");
@@ -3461,11 +3574,7 @@ function closeTimeSeriesDetailsModal() {
 
 
 function switchRegSubtab(tab) {
-  const tabs = ["parent","guardian"];
-  tabs.forEach(t => {
-    document.getElementById("regSubtabPanel-" + t).classList.toggle("active", t === tab);
-    document.getElementById("regSubtabBtn-" + t).classList.toggle("active", t === tab);
-  });
+  // Tabs unified into single panel
 }
 
 function switchPayTab(tab) {
