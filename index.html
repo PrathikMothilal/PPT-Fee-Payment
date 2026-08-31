@@ -2030,6 +2030,8 @@ async function doLogin() {
       return;
     }
 
+    const enteredHash = await sha256Hash(pwd);
+
     let passwordMatches = false;
     if (stu.passwordHash) {
       // New-style hashed password
