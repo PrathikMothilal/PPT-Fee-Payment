@@ -29,22 +29,37 @@ const COLLEGE_ADDR = "Kolivakkam, Kanchipuram, Tamil Nadu – 631 502";
 const ADMIN_EMAIL  = "pallavanppt86@gmail.com"; // same account used for admin login
 const FROM_EMAIL   = "pallavanppt86@gmail.com"; // must be verified as a sender in Brevo
 
+// ── Allowed origins (hardening) ──
+// Only your own site should be able to call this Worker from a browser.
+// Add every origin your site is actually served from (GitHub Pages, a
+// custom domain if you add one later, localhost while testing, etc).
+// IMPORTANT: replace the GitHub Pages placeholder below with your real URL.
+const ALLOWED_ORIGINS = [
+  "https://YOUR-GITHUB-USERNAME.github.io", // ← replace with your real GitHub Pages origin
+  "http://localhost:5500",                  // convenient for local testing — remove if unused
+];
+
+function corsHeadersFor(request) {
+  const origin = request.headers.get("Origin") || "";
+  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowed,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, X-PPT-Secret",
+    "Vary": "Origin",
+  };
+}
+
+function jsonResponse(body, status, corsHeaders) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...corsHeaders },
+  });
+}
+
 // Shared brand colors — same purple/gold used across the site + PDF receipt
 const ROYAL = "#3B1F7A";
 const GOLD  = "#C9A84C";
-
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
-
-function jsonResponse(body, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
-  });
-}
 
 async function sendMail(env, { to, subject, html, attachments }) {
   const resp = await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -104,7 +119,7 @@ function detailsTable(rows) {
 // ══════════════════════════════════════════════
 // 1. Admin notification — payment submitted, needs verification
 // ══════════════════════════════════════════════
-async function notifyPendingPayment(req, env) {
+async function notifyPendingPayment(req, env, corsHeaders) {
   const {
     student_name, app_id, course, study_year, mobile,
     amount, payment_for, reference_id, date_time, balance_due,
@@ -135,13 +150,13 @@ async function notifyPendingPayment(req, env) {
     html,
   });
 
-  return jsonResponse({ ok: true });
+  return jsonResponse({ ok: true }, 200, corsHeaders);
 }
 
 // ══════════════════════════════════════════════
 // 2. Payment confirmed — email STUDENT + ADMIN, receipt PDF attached
 // ══════════════════════════════════════════════
-async function notifyPaymentConfirmed(req, env) {
+async function notifyPaymentConfirmed(req, env, corsHeaders) {
   const {
     student_email, student_name, app_id, course, study_year,
     amount, payment_for, reference_id, date_time, balance_due,
@@ -191,20 +206,20 @@ async function notifyPaymentConfirmed(req, env) {
     attachments,
   });
 
-  return jsonResponse({ ok: true });
+  return jsonResponse({ ok: true }, 200, corsHeaders);
 }
 
 // ══════════════════════════════════════════════
 // 3. Payment rejected — email STUDENT
 // ══════════════════════════════════════════════
-async function notifyPaymentRejected(req, env) {
+async function notifyPaymentRejected(req, env, corsHeaders) {
   const {
     student_email, student_name, app_id, course, study_year,
     amount, payment_for, reference_id, date_time, balance_due,
   } = await req.json();
 
   if (!student_email) {
-    return jsonResponse({ ok: true, skipped: true });
+    return jsonResponse({ ok: true, skipped: true }, 200, corsHeaders);
   }
 
   const statusBg    = "#FBF0F0";
@@ -240,7 +255,7 @@ async function notifyPaymentRejected(req, env) {
     html,
   });
 
-  return jsonResponse({ ok: true });
+  return jsonResponse({ ok: true }, 200, corsHeaders);
 }
 
 // ── Router ──
@@ -252,23 +267,39 @@ const ROUTES = {
 
 export default {
   async fetch(request, env) {
+    const corsHeaders = corsHeadersFor(request);
+
     if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: CORS_HEADERS });
+      return new Response(null, { status: 204, headers: corsHeaders });
     }
     if (request.method !== "POST") {
-      return jsonResponse({ ok: false, error: "Method not allowed" }, 405);
+      return jsonResponse({ ok: false, error: "Method not allowed" }, 405, corsHeaders);
+    }
+
+    // Shared-secret check — a lightweight speed bump so the endpoint can't
+    // be trivially scripted from outside your own app. Set with:
+    //   wrangler secret put PPT_SHARED_SECRET
+    // and the client sends the same value back in the X-PPT-Secret header
+    // (see CLOUD_FN_SECRET in index.html). This is NOT a substitute for
+    // real auth — anyone who reads your page source can find it — but it
+    // stops casual scanning/abuse of your Brevo quota from random bots.
+    if (env.PPT_SHARED_SECRET) {
+      const provided = request.headers.get("X-PPT-Secret") || "";
+      if (provided !== env.PPT_SHARED_SECRET) {
+        return jsonResponse({ ok: false, error: "Unauthorized" }, 401, corsHeaders);
+      }
     }
 
     const url = new URL(request.url);
     const handler = ROUTES[url.pathname];
     if (!handler) {
-      return jsonResponse({ ok: false, error: "Unknown route" }, 404);
+      return jsonResponse({ ok: false, error: "Unknown route" }, 404, corsHeaders);
     }
 
     try {
-      return await handler(request, env);
+      return await handler(request, env, corsHeaders);
     } catch (e) {
-      return jsonResponse({ ok: false, error: e.message }, 500);
+      return jsonResponse({ ok: false, error: e.message }, 500, corsHeaders);
     }
   },
 };
