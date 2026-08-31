@@ -3974,9 +3974,6 @@ async function savePaymentSettings() {
   const _mno2=["January","February","March","April","May","June","July","August","September","October","November","December"];
   const _acm=s.acadCutoffMonth!==undefined?s.acadCutoffMonth:5, _acd=s.acadCutoffDay||30;
   if(document.getElementById("viewAcadDate")) document.getElementById("viewAcadDate").textContent=_acd+" "+_mno2[_acm]+" every year";
-  document.getElementById("viewEmailSvc").innerHTML = s.emailSvc ? escHtml(s.emailSvc) : '<em class="text-muted">Not set</em>';
-  document.getElementById("viewEmailTpl").innerHTML = s.emailTpl ? escHtml(s.emailTpl) : '<em class="text-muted">Not set</em>';
-  document.getElementById("viewEmailKey").innerHTML = s.emailKey ? '••••••••••••'      : '<em class="text-muted">Not set</em>';
   // Switch back to the read-only view and show the Edit button again
   cancelEditSection('paySettings');
   // Show a brief "Saved!" confirmation in the view header
