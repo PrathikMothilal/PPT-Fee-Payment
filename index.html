@@ -3848,38 +3848,52 @@ function handleUpiAppClick(appIdx) {
 
   const isIOS     = /iPhone|iPad|iPod/i.test(navigator.userAgent);
   const isAndroid = /Android/i.test(navigator.userAgent);
-  const upiLink   = window._currentUpiUniversalLink;
   const upiId     = window._portalUpiId || "";
+  const payeeName = "Pallavan Polytechnic College";
   const amt       = _currentUpiAmt;
   const payNote   = window._currentPayNote || ("Fee Payment - " + _currentUpiFor);
   const autoRefId = window._currentAutoRefId || "";
+  const universalUpiLink = window._currentUpiUniversalLink;
+
+  let targetUrl = "";
 
   if (isAndroid) {
     if (app.name === "BHIM") {
-      // BHIM specific direct launch on Android
-      const bhimIntent = `intent://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent("Pallavan Polytechnic College")}&am=${amt}&cu=INR&tn=${encodeURIComponent(payNote)}&tr=${encodeURIComponent(autoRefId)}#Intent;scheme=upi;package=in.org.npci.upiapp;end`;
-      window.location.href = bhimIntent;
-      setTimeout(() => {
-        try { window.location.href = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent("Pallavan Polytechnic College")}&am=${amt}&cu=INR&tn=${encodeURIComponent(payNote)}&tr=${encodeURIComponent(autoRefId)}`; } catch(e) {}
-      }, 1000);
-    } else if (app.androidPackage) {
-      const intentUrl = `intent://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent("Pallavan Polytechnic College")}&am=${amt}&cu=INR&tn=${encodeURIComponent(payNote)}&tr=${encodeURIComponent(autoRefId)}#Intent;scheme=upi;package=${app.androidPackage};end`;
-      window.location.href = intentUrl;
-      setTimeout(() => {
-        try { window.location.href = app.scheme || upiLink; } catch(e) {}
-      }, 1000);
+      // Direct BHIM package intent on Android (prevents WhatsApp or other apps from intercepting)
+      targetUrl = `intent://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR&tn=${encodeURIComponent(payNote)}&tr=${encodeURIComponent(autoRefId)}#Intent;scheme=upi;package=in.org.npci.upiapp;end`;
+    } else if (app.name === "Google Pay") {
+      targetUrl = `intent://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR&tn=${encodeURIComponent(payNote)}&tr=${encodeURIComponent(autoRefId)}#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
+    } else if (app.name === "PhonePe") {
+      targetUrl = `intent://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR&tn=${encodeURIComponent(payNote)}&tr=${encodeURIComponent(autoRefId)}#Intent;scheme=upi;package=com.phonepe.app;end`;
+    } else if (app.name === "Paytm") {
+      targetUrl = `intent://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR&tn=${encodeURIComponent(payNote)}&tr=${encodeURIComponent(autoRefId)}#Intent;scheme=upi;package=net.one97.paytm;end`;
     } else {
-      window.location.href = app.scheme || upiLink;
+      // Any UPI App chooser
+      targetUrl = universalUpiLink;
     }
   } else if (isIOS) {
-    window.location.href = app.scheme || upiLink;
-    setTimeout(() => {
-      try { window.location.href = upiLink; } catch(e) {}
-    }, 1200);
+    if (app.name === "BHIM") {
+      targetUrl = `bhim://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR&tn=${encodeURIComponent(payNote)}&tr=${encodeURIComponent(autoRefId)}`;
+    } else {
+      targetUrl = app.scheme || universalUpiLink;
+    }
   } else {
     // Desktop: copy UPI ID and show helpful hint
     copyUpiId();
     showAlert("upiStep2Alert", "info", `💡 Clicked <strong>${app.name}</strong>. UPI ID (<strong>${upiId}</strong>) copied! Scan the QR code or pay with note: <strong>${escHtml(autoRefId)}</strong>.`);
+    return;
+  }
+
+  // Trigger app launch cleanly without delayed fallback timers
+  try {
+    const link = document.createElement("a");
+    link.href = targetUrl;
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => link.remove(), 150);
+  } catch (err) {
+    window.location.href = targetUrl;
   }
 }
 
