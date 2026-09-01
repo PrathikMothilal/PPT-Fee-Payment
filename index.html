@@ -307,7 +307,9 @@ textarea.form-control{resize:vertical;min-height:80px}
 .upi-app-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}
 .upi-app-btn{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 6px;border:1.5px solid var(--border);border-radius:14px;cursor:pointer;transition:all 0.18s;background:#fff;text-decoration:none}
 .upi-app-btn:hover{border-color:var(--royal-light);background:#F5F0FF;transform:translateY(-2px);box-shadow:0 4px 12px rgba(61,26,110,0.12)}
-.upi-app-btn img{width:38px;height:38px;border-radius:10px;object-fit:contain}
+.upi-app-btn svg{width:40px;height:40px;border-radius:10px;flex-shrink:0;transition:transform 0.2s}
+.upi-app-btn:hover svg{transform:scale(1.08)}
+.upi-app-btn img{width:40px;height:40px;border-radius:10px;object-fit:contain}
 .upi-app-btn .generic-icon{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--royal),var(--royal-light));display:flex;align-items:center;justify-content:center;font-size:18px}
 .upi-app-btn span{font-size:0.72rem;font-weight:500;color:var(--text-mid);text-align:center}
 .upi-or-divider{display:flex;align-items:center;gap:10px;margin:14px 0}
@@ -956,8 +958,20 @@ textarea.form-control{resize:vertical;min-height:80px}
           <!-- STEP 2: QR + App options -->
           <div class="upi-step" id="upiStep2">
             <div id="upiStep2Alert"></div>
+
+            <!-- Auto-Generated Reference ID Banner -->
+            <div style="background:linear-gradient(135deg,#FAF5FF,#F3E8FF);border:1.5px solid #D8B4FE;border-radius:12px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
+              <div>
+                <div style="font-size:0.72rem;color:#6B21A8;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">Auto Payment Reference ID</div>
+                <div id="upiGeneratedRefText" style="font-family:monospace;font-size:1.15rem;font-weight:800;color:var(--royal);letter-spacing:0.05em">Generating…</div>
+              </div>
+              <button type="button" class="btn btn-outline btn-sm" onclick="copyAutoRefId()" style="font-size:0.75rem;padding:5px 10px;border-color:#9333EA;color:#7E22CE;background:#fff">
+                📋 Copy Ref ID
+              </button>
+            </div>
+
             <p style="font-size:0.8rem;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px">Open your UPI app</p>
-            <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0">Tap an app below — it will open with amount pre-filled</p>
+            <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0">Tap an app below — Reference ID &amp; amount are automatically pre-filled in notes</p>
             <div class="upi-app-grid" id="upiAppGrid"></div>
 
             <div class="upi-or-divider"><span>OR scan QR code on desktop / any camera</span></div>
@@ -971,8 +985,23 @@ textarea.form-control{resize:vertical;min-height:80px}
               </div>
             </div>
 
+            <!-- UPI Reference / UTR input -->
+            <div style="margin:14px 0;text-align:left;background:#FAF5FF;border:1.5px solid #E9D8FD;border-radius:12px;padding:12px 16px">
+              <label style="display:flex;align-items:center;justify-content:space-between;font-weight:600;font-size:0.84rem;color:var(--royal);margin-bottom:6px">
+                <span>Payment Reference / UTR ID</span>
+                <span style="font-size:0.72rem;color:var(--text-muted);font-weight:normal">Pre-filled with auto Ref ID</span>
+              </label>
+              <input type="text" id="upiTxnRef" class="form-control" placeholder="Auto reference ID" maxlength="30"
+                style="background:#fff;font-family:monospace;font-weight:700;font-size:0.95rem;letter-spacing:0.04em"
+                oninput="this.classList.remove('is-invalid'); clearAlert('upiStep2Alert');">
+              <div class="field-error" id="err-upiTxnRef" style="margin-top:4px"></div>
+              <p style="font-size:0.74rem;color:var(--text-muted);margin:6px 0 0;line-height:1.4">
+                💡 The Reference ID above is automatically attached in your UPI app note. If your bank gives a separate 12-digit UTR, you can paste it here or keep the auto Ref ID.
+              </p>
+            </div>
+
             <button class="done-btn" onclick="markPaymentDone()">
-              ✓ &nbsp;I have completed the payment
+              ✓ &nbsp;Submit Payment for Verification
             </button>
             <p style="font-size:0.72rem;color:var(--text-muted);text-align:center;margin-top:8px;line-height:1.5">
               After tapping above, the college will verify and confirm your payment within 1–2 working days.<br>
@@ -1054,12 +1083,21 @@ textarea.form-control{resize:vertical;min-height:80px}
     <!-- TAB PANEL 2: Payment Verifications -->
     <div class="admin-tab-panel" id="adminTabPanel-verify">
     <div class="section-card">
-      <div class="card-head">
-        <h3>Pending Payment Verifications</h3>
+      <div class="card-head" style="align-items:flex-start">
+        <div>
+          <h3>Pending Payment Verifications</h3>
+          <p style="font-size:0.8rem;color:var(--text-muted);margin:3px 0 0">Match student UTR / Reference IDs with your bank statement or UPI merchant app to approve</p>
+        </div>
         <span class="badge badge-red" id="pendingCount">0 pending</span>
       </div>
-      <div class="card-body" id="pendingApprovalsList">
-        <p class="text-muted">No pending verifications.</p>
+      <div class="card-body">
+        <div style="margin-bottom:18px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <input type="text" id="pendingSearch" class="form-control" placeholder="🔍 Search by UTR / Reference No. / Student Name / App ID…" oninput="filterPendingApprovals()" style="max-width:380px;font-size:0.88rem;background:#fff">
+          <span style="font-size:0.8rem;color:var(--text-muted)">💡 Paste UTR from bank SMS to find matching student instantly</span>
+        </div>
+        <div id="pendingApprovalsList">
+          <p class="text-muted">No pending verifications.</p>
+        </div>
       </div>
     </div>
     </div>
@@ -2653,6 +2691,7 @@ async function renderStudentDash() {
           <div>
             <div style="font-weight:500;font-size:0.9rem">₹${fmt(p.amount)} — ${escHtml(p.forLabel)}</div>
             <div class="text-muted">${formatDate(p.date)}${p.receiptNo ? ' · Receipt: '+p.receiptNo : ''}</div>
+          ${p.referenceId ? `<div style="font-size:0.76rem;color:var(--royal);font-family:monospace;font-weight:600;margin-top:2px">Ref / UTR: ${escHtml(p.referenceId)}</div>` : ''}
           </div>
         </div>
         <div class="d-flex align-center gap-8">
@@ -3660,6 +3699,22 @@ async function validatePayAmount(amt, forVal) {
   return true;
 }
 
+// Helper to generate unique reference ID
+function generatePaymentRefId() {
+  const yearSuffix = String(new Date().getFullYear()).slice(-2);
+  const randomSuffix = String(Math.floor(100000 + Math.random() * 900000));
+  return "PPT" + yearSuffix + "-" + randomSuffix;
+}
+
+function copyAutoRefId() {
+  const refId = window._currentAutoRefId || "";
+  if (!refId) return;
+  navigator.clipboard.writeText(refId).then(() => {
+    showAlert("upiStep2Alert", "success", `✓ Reference ID <strong>${refId}</strong> copied to clipboard!`);
+    setTimeout(() => clearAlert("upiStep2Alert"), 2500);
+  }).catch(() => {});
+}
+
 // STEP 1 — open confirm popup
 async function openUpiModal() {
   clearAlert("sPayAlert");
@@ -3674,9 +3729,13 @@ async function openUpiModal() {
   const settings = await DB.getSettings();
   const upiId = settings.upiId || "";
   if (!upiId) {
-    showAlert("sPayAlert","warning","UPI ID not yet configured by the college. Please contact the college office.");
+    showAlert("sPayAlert", "warning", "UPI ID not yet configured by the college. Please contact the college office.");
     return;
   }
+
+  // Generate unique Reference ID for this payment transaction
+  const autoRefId = generatePaymentRefId();
+  window._currentAutoRefId = autoRefId;
   window._portalUpiId = upiId;
   _currentUpiAmt = amt;
   _currentUpiFor = forLabel;
@@ -3698,40 +3757,94 @@ function goToUpiStep2() {
     markPaymentDone();
     return;
   }
-  const amt    = _currentUpiAmt;
-  const upiId  = window._portalUpiId || "";
+  const amt       = _currentUpiAmt;
+  const upiId     = window._portalUpiId || "";
   const payeeName = "Pallavan Polytechnic College";
-  const upiLink   = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR&tn=${encodeURIComponent("Fee Payment - "+_currentUpiFor)}`;
+  const autoRefId = window._currentAutoRefId || generatePaymentRefId();
+  window._currentAutoRefId = autoRefId;
+
+  // Auto-filled note contains the unique Reference ID, Student App ID, and Fee category
+  const payNote   = `${autoRefId} ${(currentUser.appId || "")} ${_currentUpiFor}`.trim();
+  const upiLink   = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR&tn=${encodeURIComponent(payNote)}&tr=${encodeURIComponent(autoRefId)}`;
+
+  window._currentUpiUniversalLink = upiLink;
+  window._currentPayNote = payNote;
 
   document.getElementById("upiModalTitle").textContent = "Complete Payment";
   document.getElementById("upiStep1").classList.remove("active");
   document.getElementById("upiStep2").classList.add("active");
   clearAlert("upiStep2Alert");
 
+  // Display Auto Reference ID banner and fill input field
+  const refDisplayEl = document.getElementById("upiGeneratedRefText");
+  if (refDisplayEl) refDisplayEl.textContent = autoRefId;
+  const refInputEl = document.getElementById("upiTxnRef");
+  if (refInputEl) refInputEl.value = autoRefId;
+
   // Update UPI ID display
   document.getElementById("upiIdRowText").textContent = upiId;
 
-  // UPI app deep links
+  // Direct UPI apps with guaranteed inline SVGs and direct intent schemes including note and ref
   const apps = [
-    { name:"GPay",       scheme:`tez://upi/pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR`,       icon:"https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Google_Pay_Logo.svg/512px-Google_Pay_Logo.svg.png" },
-    { name:"PhonePe",    scheme:`phonepe://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR`,       icon:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/PhonePe_Logo.png/800px-PhonePe_Logo.png" },
-    { name:"Paytm",      scheme:`paytmmp://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR`,       icon:"https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Paytm_Logo_%28standalone%29.svg/512px-Paytm_Logo_%28standalone%29.svg.png" },
-    { name:"BHIM",       scheme:`bhim://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR`,          icon:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/BHIM_SVG_Logo.svg/512px-BHIM_SVG_Logo.svg.png" },
-    { name:"Amazon Pay", scheme:`amazonpay://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR`,     icon:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Amazon_logo.svg/512px-Amazon_logo.svg.png" },
-    { name:"CRED",       scheme:`credpay://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR`,       icon:"https://play-lh.googleusercontent.com/A7E1eDOhBQBd-jO-uQT4V6UyrCEiU_p5rEKrP-V0hFVopiwA5VRyljHBjf2M0SfXuA" },
-    { name:"iMobile",    scheme:upiLink, icon:"https://play-lh.googleusercontent.com/7-bDNhVTOpZ4C0d1KF-KVVS0c-UxCBCnc9YaXL5rIR63HJqJ7D7vvk8-g1jCGHJYk4" },
-    { name:"Any UPI",    scheme:upiLink, icon:"", isGeneric:true },
+    {
+      name: "Google Pay",
+      scheme: `tez://upi/pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR&tn=${encodeURIComponent(payNote)}&tr=${encodeURIComponent(autoRefId)}`,
+      androidPackage: "com.google.android.apps.nbu.paisa.user",
+      svg: `<svg width="40" height="40" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#ffffff" stroke="#E2E8F0" stroke-width="1.5"/><path fill="#4285F4" d="M35.5 24.3c0-.8-.1-1.6-.2-2.3H24v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7v3.1h3.9c2.3-2.1 3.6-5.2 3.6-9z"/><path fill="#34A853" d="M24 36c3.2 0 6-1.1 8-3l-3.9-3.1c-1.1.7-2.5 1.2-4.1 1.2-3.2 0-5.8-2.1-6.8-5h-4v3.2c2 4 6.2 6.7 10.8 6.7z"/><path fill="#FBBC05" d="M17.2 26.1c-.3-.7-.4-1.5-.4-2.1s.1-1.4.4-2.1v-3.2h-4c-.9 1.7-1.3 3.5-1.3 5.3s.5 3.6 1.3 5.3l4-3.2z"/><path fill="#EA4335" d="M24 16c1.8 0 3.4.6 4.7 1.8l3.5-3.5C30 12.3 27.2 11 24 11c-4.6 0-8.8 2.7-10.8 6.7l4 3.2c1-2.9 3.6-4.9 6.8-4.9z"/></svg>`
+    },
+    {
+      name: "PhonePe",
+      scheme: `phonepe://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR&tn=${encodeURIComponent(payNote)}&tr=${encodeURIComponent(autoRefId)}`,
+      androidPackage: "com.phonepe.app",
+      svg: `<svg width="40" height="40" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#5F259F"/><path fill="#ffffff" d="M26 13h-8v22h4.5v-6.5h3.5c4.5 0 7.5-2.8 7.5-7.7 0-4.9-3-7.8-7.5-7.8zm0 11h-3.5v-6.5H26c2.2 0 3.5 1.2 3.5 3.2 0 2-1.3 3.3-3.5 3.3z"/><circle cx="34" cy="28" r="3.5" fill="#00D2D3"/></svg>`
+    },
+    {
+      name: "Paytm",
+      scheme: `paytmmp://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR&tn=${encodeURIComponent(payNote)}&tr=${encodeURIComponent(autoRefId)}`,
+      androidPackage: "net.one97.paytm",
+      svg: `<svg width="40" height="40" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#002E6E"/><text x="24" y="27" font-family="'DM Sans',sans-serif" font-size="12" font-weight="900" fill="#00BAF2" text-anchor="middle">Pay<tspan fill="#ffffff">tm</tspan></text><rect x="13" y="32" width="22" height="2.5" rx="1.2" fill="#00BAF2"/></svg>`
+    },
+    {
+      name: "BHIM",
+      scheme: `bhim://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR&tn=${encodeURIComponent(payNote)}&tr=${encodeURIComponent(autoRefId)}`,
+      androidPackage: "in.org.npci.upiapp",
+      svg: `<svg width="40" height="40" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#005A9C"/><path d="M14 13h20l-6 11 6 11H14z" fill="#009639"/><path d="M14 13h14l-4 7.5h-10z" fill="#FF7900"/><text x="24" y="39" font-family="'DM Sans',sans-serif" font-size="8.5" font-weight="900" fill="#FFFFFF" text-anchor="middle" letter-spacing="1">BHIM</text></svg>`
+    },
+    {
+      name: "Amazon Pay",
+      scheme: `amazonpay://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR&tn=${encodeURIComponent(payNote)}&tr=${encodeURIComponent(autoRefId)}`,
+      androidPackage: "in.amazon.mShop.android.shopping",
+      svg: `<svg width="40" height="40" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#232F3E"/><text x="24" y="25" font-family="'DM Sans',sans-serif" font-size="10" font-weight="800" fill="#FFFFFF" text-anchor="middle">pay</text><path d="M15 31c5.5 3.5 12.5 3.5 18 0" stroke="#FF9900" stroke-width="2.5" stroke-linecap="round" fill="none"/><path d="M31 30l3 1.2-1.8-3.2z" fill="#FF9900"/></svg>`
+    },
+    {
+      name: "CRED",
+      scheme: `credpay://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR&tn=${encodeURIComponent(payNote)}&tr=${encodeURIComponent(autoRefId)}`,
+      androidPackage: "com.dreamplug.androidapp",
+      svg: `<svg width="40" height="40" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#121212"/><path d="M15 14h18v18c0 4.5-4.5 7-9 9-4.5-2-9-4.5-9-9V14z" stroke="#FFFFFF" stroke-width="2" fill="none"/><path d="M20.5 20h7v7.5c0 1.8-1.7 3-3.5 3.5-1.8-.5-3.5-1.7-3.5-3.5V20z" fill="#FFFFFF"/></svg>`
+    },
+    {
+      name: "WhatsApp",
+      scheme: `whatsapp://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amt}&cu=INR&tn=${encodeURIComponent(payNote)}&tr=${encodeURIComponent(autoRefId)}`,
+      androidPackage: "com.whatsapp",
+      svg: `<svg width="40" height="40" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#25D366"/><path fill="#ffffff" d="M24 12c-6.6 0-12 5.4-12 12 0 2.2.6 4.3 1.7 6.1L12 36l6.1-1.6c1.8 1 3.8 1.6 5.9 1.6 6.6 0 12-5.4 12-12s-5.4-12-12-12zm4.8 17.2c-.2.6-1.2 1.1-1.7 1.2-.5.1-1.1.2-3.3-.7-2.7-1.1-4.4-3.8-4.5-4-.1-.2-1.2-1.6-1.2-3 0-1.4.7-2.1 1-2.4.3-.3.6-.4.9-.4.2 0 .4 0 .6.1.2.1.5 1.2.6 1.4.1.2.1.4 0 .6-.1.2-.2.4-.4.6-.2.2-.4.4-.2.7.3.7 1.4 2.2 3.1 2.8.5.2.8.2 1.1.1.3-.1.9-.9 1.1-1.3.2-.4.4-.3.7-.2.3.1 1.8.8 2.1 1 .3.1.5.2.6.4 0 .3-.1 1.4-.3 2z"/></svg>`
+    },
+    {
+      name: "Any UPI App",
+      scheme: upiLink,
+      androidPackage: "",
+      svg: `<svg width="40" height="40" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#3D1A6E"/><path d="M15 27l9-11 9 11h-6l-3-4-3 4z" fill="#C9A84C"/><text x="24" y="38" font-family="'DM Sans',sans-serif" font-size="8.5" font-weight="900" fill="#FFFFFF" text-anchor="middle" letter-spacing="1">UPI</text></svg>`
+    }
   ];
 
-  document.getElementById("upiAppGrid").innerHTML = apps.map(app => `
-    <a class="upi-app-btn" onclick="handleUpiAppClick(event,'${encodeURIComponent(app.scheme)}','${encodeURIComponent(upiLink)}')" href="javascript:void(0)">
-      ${app.isGeneric
-        ? '<div class="generic-icon">💳</div>'
-        : `<img src="${app.icon}" alt="${app.name}" onerror="this.parentElement.style.display='none'">`}
-      <span>${app.name}</span>
-    </a>`).join("");
+  window._currentUpiApps = apps;
 
-  // Generate QR code
+  document.getElementById("upiAppGrid").innerHTML = apps.map((app, idx) => `
+    <button type="button" class="upi-app-btn" onclick="handleUpiAppClick(${idx})" title="Pay with ${app.name}">
+      ${app.svg}
+      <span>${app.name}</span>
+    </button>`).join("");
+
+  // Generate QR code with pre-filled note and reference ID
   const qrDiv = document.getElementById("qrcode");
   qrDiv.innerHTML = "";
   if (_qrInstance) { try { _qrInstance.clear(); } catch(e){} _qrInstance = null; }
@@ -3746,21 +3859,36 @@ function goToUpiStep2() {
   }
 }
 
-function handleUpiAppClick(e, encodedScheme, encodedFallback) {
-  e.preventDefault();
-  const scheme  = decodeURIComponent(encodedScheme);
-  const fallback = decodeURIComponent(encodedFallback);
-  // Try app deep link; if not installed browser falls back gracefully
-  const isIOS    = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const isAndroid = /Android/i.test(navigator.userAgent);
+function handleUpiAppClick(appIdx) {
+  const app = window._currentUpiApps?.[appIdx];
+  if (!app) return;
 
-  if (isIOS || isAndroid) {
-    // On mobile: try deep link, fallback to generic UPI link after 1.5s
-    window.location.href = scheme;
-    setTimeout(() => { try { window.location.href = fallback; } catch(e){} }, 1500);
+  const isIOS     = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isAndroid = /Android/i.test(navigator.userAgent);
+  const upiLink   = window._currentUpiUniversalLink;
+  const upiId     = window._portalUpiId || "";
+  const amt       = _currentUpiAmt;
+  const payNote   = window._currentPayNote || ("Fee Payment - " + _currentUpiFor);
+  const autoRefId = window._currentAutoRefId || "";
+
+  if (isAndroid) {
+    if (app.androidPackage) {
+      const intentUrl = `intent://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent("Pallavan Polytechnic College")}&am=${amt}&cu=INR&tn=${encodeURIComponent(payNote)}&tr=${encodeURIComponent(autoRefId)}#Intent;scheme=upi;package=${app.androidPackage};end`;
+      window.location.href = intentUrl;
+    } else {
+      window.location.href = app.scheme || upiLink;
+    }
+    setTimeout(() => {
+      try { window.location.href = upiLink; } catch(e) {}
+    }, 1200);
+  } else if (isIOS) {
+    window.location.href = app.scheme || upiLink;
+    setTimeout(() => {
+      try { window.location.href = upiLink; } catch(e) {}
+    }, 1200);
   } else {
-    // On desktop: show instruction
-    showAlert("upiModalAlert","info","💡 Open this UPI app on your phone, or scan the QR code below to pay from your phone.");
+    copyUpiId();
+    showAlert("upiStep2Alert", "info", `💡 Clicked <strong>${app.name}</strong>. UPI ID (<strong>${upiId}</strong>) copied! Scan QR with your phone to pay with note: <strong>${escHtml(autoRefId)}</strong>.`);
   }
 }
 
@@ -3789,46 +3917,61 @@ function handleUpiOverlayClick(e) {
 async function markPaymentDone() {
   const amt      = parseFloat(document.getElementById("sPayAmount").value);
   const forLabel = document.getElementById("sPayFor").value;
-  clearAlert("upiModalAlert");
-  if (isNaN(amt)||amt<=0) { showAlert("upiModalAlert","danger","Invalid amount."); return; }
+  const isNetBanking = (window._payMode === "netbanking");
+  const refInput = (document.getElementById("upiTxnRef")?.value || "").trim();
 
-  setLoading(true,"Recording your payment…");
+  clearAlert("upiStep2Alert");
+
+  if (isNaN(amt) || amt <= 0) {
+    showAlert("upiStep2Alert", "danger", "Please enter a valid payment amount.");
+    return;
+  }
+
+  const finalRef = refInput || window._currentAutoRefId || generatePaymentRefId();
+
+  if (refInput.length < 6) {
+    showAlert("upiStep2Alert", "danger", "⚠️ Please enter a valid Reference / UTR Number (minimum 6 characters).");
+    document.getElementById("upiTxnRef")?.classList.add("is-invalid");
+    return;
+  }
+
+  setLoading(true, "Submitting your payment for verification…");
   try {
     const stu = await DB.getStudent(currentUser.appId);
     stu.payments = stu.payments || [];
-    const refId = "PPT-" + stu.appId + "-" + Date.now();
-    // Stamp the year this payment applies to RIGHT NOW, at submission time —
-    // this is the year the amount was validated/capped against. studyYear
-    // auto-advances over time, so if we waited and re-derived it later (e.g.
-    // when admin confirms), the credit could land on the wrong year and the
-    // real year would never show "Cleared". See confirmPayment().
-    const yearMapNow = {"1st Year":"year1","2nd Year":"year2","3rd Year":"year3","Passed Out":"year3"};
-    // "Arrear Dues" spans multiple past years, not one — leave yKey unset so
-    // confirmPayment() knows to route it through creditArrearPayment()
-    // instead of crediting a single year.
+
+    const yearMapNow = { "1st Year": "year1", "2nd Year": "year2", "3rd Year": "year3", "Passed Out": "year3" };
     const payment = {
-      amount: amt, forLabel,
-      referenceId: refId,
+      amount: amt,
+      forLabel: forLabel,
+      method: isNetBanking ? "Bank Transfer / Net Banking" : "UPI Transfer",
+      referenceId: finalRef,
+      autoRefId: window._currentAutoRefId || finalRef,
+      payNote: window._currentPayNote || '',
       date: new Date().toISOString(),
       status: "Pending Verification",
       yKey: forLabel === "Arrear Dues" ? null : (yearMapNow[currentUser.studyYear] || "year1"),
       studyYearAtPayment: currentUser.studyYear
     };
+
     stu.payments.push(payment);
     await DB.setStudent(stu);
     currentUser = stu;
 
-    // Send admin notification email automatically
+    // Send admin notification email
     await sendAdminNotificationEmail(stu, payment);
 
     setLoading(false);
     closeUpiModal();
     document.getElementById("sPayAmount").value = "";
-    showAlert("sPayAlert","success",`✅ Payment of ₹${fmt(amt)} recorded! The college office has been notified. Your receipt will appear once verified.`);
+    if (document.getElementById("upiTxnRef")) document.getElementById("upiTxnRef").value = "";
+
+    showAlert("sPayAlert", "success", `✅ Payment of ₹${fmt(amt)} (Ref: <strong>${escHtml(finalRef)}</strong>) recorded! The college office has been notified and will verify your transaction against the reference number.`);
     await renderStudentDash();
   } catch(e) {
     setLoading(false);
-    showAlert("upiModalAlert","danger","Error recording payment. Please try again.");
+    console.error("Error recording payment:", e);
+    showAlert("upiStep2Alert", "danger", "Error recording payment. Please try again. (" + (e.message || e) + ")");
   }
 }
 
@@ -3893,35 +4036,119 @@ async function renderAdminDash() {
     // Pending approvals
     const pending = [];
     students.forEach(s => {
-      (s.payments||[]).forEach((p,pi)=>{
-        if (p.status==="Pending Verification") pending.push({stu:s,payment:p,payIdx:pi});
+      (s.payments || []).forEach((p, pi) => {
+        if (p.status === "Pending Verification") pending.push({ stu: s, payment: p, payIdx: pi });
       });
     });
+    window._allPendingPayments = pending;
     document.getElementById("pendingCount").textContent = pending.length + " pending";
     const pendingTabBadge = document.getElementById("pendingCountTabBadge");
     if (pendingTabBadge) pendingTabBadge.textContent = pending.length;
-    document.getElementById("pendingApprovalsList").innerHTML = pending.length===0
-      ? '<p class="text-muted">No pending verifications.</p>'
-      : `<div class="table-wrap" style="border:none;box-shadow:none;border-radius:0"><table>
-          <thead><tr><th>Student</th><th>App ID</th><th>Amount</th><th>For</th><th>Date</th><th>Actions</th></tr></thead>
-          <tbody>${pending.map(({stu,payment,payIdx})=>`<tr>
-            <td style="font-weight:500">${escHtml(stu.name)}</td>
-            <td class="muted">${escHtml(stu.appId)}</td>
-            <td><strong>₹${fmt(payment.amount)}</strong></td>
-            <td>${escHtml(payment.forLabel)}</td>
-            <td class="muted">${formatDate(payment.date)}</td>
-            <td>
-              <button class="btn btn-success-light btn-sm" onclick="confirmPayment('${escAttr(stu.appId)}',${payIdx})">✓ Confirm</button>
-              &nbsp;
-              <button class="btn btn-danger btn-sm" onclick="rejectPayment('${escAttr(stu.appId)}',${payIdx})">✕ Reject</button>
-            </td>
-          </tr>`).join("")}</tbody>
-        </table></div>`;
 
+    renderPendingApprovalsTable(pending);
     renderStudentTable(students);
   } catch(e) {
     setLoading(false);
     console.error(e);
+  }
+}
+
+
+function filterPendingApprovals() {
+  const q = (document.getElementById("pendingSearch")?.value || "").trim().toLowerCase();
+  const all = window._allPendingPayments || [];
+  if (!q) {
+    renderPendingApprovalsTable(all);
+    return;
+  }
+  const filtered = all.filter(({ stu, payment }) => {
+    return (payment.referenceId && payment.referenceId.toLowerCase().includes(q)) ||
+           (stu.name && stu.name.toLowerCase().includes(q)) ||
+           (stu.appId && stu.appId.toLowerCase().includes(q)) ||
+           (stu.regNo && stu.regNo.toLowerCase().includes(q)) ||
+           (payment.forLabel && payment.forLabel.toLowerCase().includes(q)) ||
+           String(payment.amount).includes(q);
+  });
+  renderPendingApprovalsTable(filtered);
+}
+
+function renderPendingApprovalsTable(pendingList) {
+  const container = document.getElementById("pendingApprovalsList");
+  if (!container) return;
+
+  if (!pendingList || pendingList.length === 0) {
+    const isFiltered = Boolean(document.getElementById("pendingSearch")?.value?.trim());
+    container.innerHTML = `<p class="text-muted" style="padding:16px 0">${isFiltered ? "No pending payments match your search." : "No pending payment verifications."}</p>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="table-wrap" style="border:none;box-shadow:none;border-radius:0;overflow-x:auto">
+      <table style="min-width:980px">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>App ID / Reg. No.</th>
+            <th>Amount</th>
+            <th>Payment For</th>
+            <th>Reference / UTR No.</th>
+            <th>Date &amp; Time</th>
+            <th style="text-align:center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${pendingList.map(({ stu, payment, payIdx }) => `
+            <tr>
+              <td>
+                <div style="font-weight:600;color:var(--text-dark)">${escHtml(stu.name)}</div>
+                <div style="font-size:0.75rem;color:var(--text-muted)">${escHtml(stu.course || "")} (${escHtml(stu.studyYear || "")})</div>
+              </td>
+              <td>
+                <div style="font-weight:600;color:var(--royal)">${escHtml(stu.appId)}</div>
+                ${stu.regNo ? `<div style="font-size:0.75rem;color:var(--text-muted)">Reg: ${escHtml(stu.regNo)}</div>` : ""}
+              </td>
+              <td>
+                <span style="font-size:1.05rem;font-weight:700;color:#1B6B3A">₹${fmt(payment.amount)}</span>
+                <div style="font-size:0.72rem;color:var(--text-muted)">${escHtml(payment.method || "UPI")}</div>
+              </td>
+              <td>
+                <span class="badge badge-gold" style="font-size:0.8rem">${escHtml(payment.forLabel)}</span>
+              </td>
+              <td>
+                <div style="display:inline-flex;align-items:center;gap:6px;background:#F3E8FF;border:1px solid #D8B4FE;border-radius:8px;padding:4px 10px">
+                  <span style="font-family:monospace;font-weight:700;font-size:0.88rem;color:#581C87;letter-spacing:0.04em">
+                    ${escHtml(payment.referenceId || "—")}
+                  </span>
+                  ${payment.referenceId ? `
+                    <button type="button" onclick="navigator.clipboard.writeText('${escAttr(payment.referenceId)}'); this.textContent='✓'; setTimeout(()=>this.textContent='📋',1200)"
+                      title="Copy Reference No." style="border:none;background:none;cursor:pointer;font-size:0.88rem;padding:0;line-height:1">📋</button>
+                  ` : ""}
+                </div>
+              </td>
+              <td class="muted" style="font-size:0.82rem">
+                ${formatDate(payment.date)}
+              </td>
+              <td style="text-align:center;white-space:nowrap">
+                <button class="btn btn-success-light btn-sm" onclick="promptConfirmPayment('${escAttr(stu.appId)}', ${payIdx}, '${escAttr(stu.name)}', ${payment.amount}, '${escAttr(payment.referenceId || "")}')">
+                  ✓ Confirm
+                </button>
+                &nbsp;
+                <button class="btn btn-danger btn-sm" onclick="rejectPayment('${escAttr(stu.appId)}', ${payIdx})">
+                  ✕ Reject
+                </button>
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function promptConfirmPayment(appId, payIdx, studentName, amount, refId) {
+  const refMsg = refId ? `\n\nReference / UTR No: ${refId}` : "";
+  const msg = `Confirm payment of ₹${fmt(amount)} for ${studentName} (${appId})?${refMsg}\n\nThis will mark the payment as Confirmed and generate an official receipt.`;
+  if (confirm(msg)) {
+    confirmPayment(appId, payIdx);
   }
 }
 
