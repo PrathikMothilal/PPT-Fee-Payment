@@ -3856,19 +3856,26 @@ function handleUpiAppClick(appIdx) {
   const amtFormatted = parseFloat(_currentUpiAmt).toFixed(2);
   const autoRefId = window._currentAutoRefId || generatePaymentRefId();
   
-  // Clean ASCII alphanumeric note (max 30 chars, no special symbols/Rupee sign to prevent BHIM parser rejection)
+  // Clean ASCII alphanumeric note (max 30 chars)
   const cleanFor = String(_currentUpiFor || "Fee").replace(/[^a-zA-Z0-9 ]/g, " ").replace(/\s+/g, " ").trim().slice(0, 15);
   const cleanAppId = String((currentUser && currentUser.appId) || "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 10);
   const payNote   = `${autoRefId} ${cleanAppId} ${cleanFor}`.replace(/\s+/g, " ").trim().slice(0, 30);
   
   const universalUpiLink = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amtFormatted}&cu=INR&tn=${encodeURIComponent(payNote)}`;
 
+  // If BHIM is selected, auto-copy the Reference ID to the clipboard and show instructions
+  if (app.name === "BHIM") {
+    try {
+      navigator.clipboard.writeText(autoRefId);
+      showAlert("upiStep2Alert", "info", `📋 Reference ID <strong>${autoRefId}</strong> copied! Opening BHIM — please paste it in the <strong>remarks / note</strong> field before paying.`);
+    } catch(e) {}
+  }
+
   let targetUrl = "";
 
   if (isAndroid) {
     if (app.name === "BHIM") {
-      // BHIM custom scheme first
-      targetUrl = `bhim://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amtFormatted}&cu=INR&tn=${encodeURIComponent(payNote)}`;
+      targetUrl = `bhim://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amtFormatted}&cu=INR`;
     } else if (app.name === "Google Pay") {
       targetUrl = `tez://upi/pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amtFormatted}&cu=INR&tn=${encodeURIComponent(payNote)}`;
     } else if (app.name === "PhonePe") {
@@ -3880,7 +3887,7 @@ function handleUpiAppClick(appIdx) {
     }
   } else if (isIOS) {
     if (app.name === "BHIM") {
-      targetUrl = `bhim://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amtFormatted}&cu=INR&tn=${encodeURIComponent(payNote)}`;
+      targetUrl = `bhim://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amtFormatted}&cu=INR`;
     } else if (app.name === "Google Pay") {
       targetUrl = `gpay://upi/pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amtFormatted}&cu=INR&tn=${encodeURIComponent(payNote)}`;
     } else if (app.name === "PhonePe") {
@@ -3897,7 +3904,7 @@ function handleUpiAppClick(appIdx) {
     return;
   }
 
-  // Attempt direct app launch
+  // Launch target URL
   try {
     const link = document.createElement("a");
     link.href = targetUrl;
@@ -3907,20 +3914,6 @@ function handleUpiAppClick(appIdx) {
     setTimeout(() => link.remove(), 200);
   } catch (err) {
     window.location.href = targetUrl;
-  }
-
-  // If BHIM custom scheme is not registered on some Android devices, try package intent fallback
-  if (isAndroid && app.name === "BHIM") {
-    setTimeout(() => {
-      try {
-        const intentFallback = `intent://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amtFormatted}&cu=INR&tn=${encodeURIComponent(payNote)}#Intent;scheme=upi;package=in.org.npci.upiapp;end`;
-        const link2 = document.createElement("a");
-        link2.href = intentFallback;
-        document.body.appendChild(link2);
-        link2.click();
-        setTimeout(() => link2.remove(), 200);
-      } catch(e) {}
-    }, 600);
   }
 }
 
