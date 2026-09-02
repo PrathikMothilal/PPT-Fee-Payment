@@ -426,6 +426,7 @@ textarea.form-control{resize:vertical;min-height:80px}
       <div class="tagline">AICTE Approved · Est. 1986 · College Code: 370 · Kolivakkam, Kanchipuram, Tamil Nadu</div>
     </div>
     <div class="header-right" id="headerRight">
+      <button type="button" class="btn btn-gold btn-sm" onclick="installPwa()" style="display:inline-flex;align-items:center;gap:6px;font-size:0.78rem;padding:5px 12px;border-radius:20px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.25);cursor:pointer" title="Install Pallavan Fee Portal as a Mobile App"><span style="font-size:14px">📲</span> Install App</button>
       <div class="header-badge">Fee Payment Portal</div>
     </div>
   </div>
@@ -458,6 +459,11 @@ textarea.form-control{resize:vertical;min-height:80px}
         <div class="text-center mt-16">
           <span class="text-muted">New student? </span>
           <button class="link-btn" onclick="showPage('pagRegister')">Create an account →</button>
+        </div>
+        <div style="margin-top:20px;padding-top:16px;border-top:1px dashed var(--border);text-align:center">
+          <button type="button" class="btn btn-outline btn-sm" onclick="installPwa()" style="border-radius:20px;display:inline-flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;padding:6px 16px">
+            <span>📲</span> Install as Mobile App (PWA)
+          </button>
         </div>
       </div>
     </div>
@@ -1414,6 +1420,42 @@ textarea.form-control{resize:vertical;min-height:80px}
   </div>
 </div>
 
+<!-- ═══════════ MODAL: PWA Install Instructions ═══════════ -->
+<div class="overlay" id="pwaInstallModal" style="z-index:9999" onclick="if(event.target===this) closePwaModal()">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-head" style="background:linear-gradient(135deg,var(--royal) 0%,var(--royal-light) 100%)">
+      <h2 style="font-size:1.05rem;color:#fff;display:flex;align-items:center;gap:8px">📲 Install College App</h2>
+      <button class="modal-close" onclick="closePwaModal()">✕</button>
+    </div>
+    <div class="gold-bar"></div>
+    <div class="modal-body" style="padding:22px 24px">
+      <div style="text-align:center;margin-bottom:16px">
+        <img src="icon-192.png" alt="PPT Logo" style="width:64px;height:64px;border-radius:50%;border:2px solid var(--gold);box-shadow:0 4px 12px rgba(61,26,110,0.15)">
+        <h4 style="font-family:'Cinzel',serif;color:var(--royal);margin-top:8px;font-size:0.95rem">Pallavan Polytechnic College</h4>
+        <p style="font-size:0.8rem;color:var(--text-muted)">Official Online Fee Payment Portal</p>
+      </div>
+
+      <div style="background:#FAF8FD;border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:18px">
+        <div style="font-weight:700;font-size:0.85rem;color:var(--royal);margin-bottom:8px">📱 Android (Chrome / Edge / Brave):</div>
+        <div style="font-size:0.82rem;color:var(--text-dark);line-height:1.5">
+          1. Tap the <strong>three dots (⋮)</strong> at the top-right of your browser.<br>
+          2. Tap <strong>'Install app'</strong> or <strong>'Add to Home screen'</strong>.<br>
+          3. Tap <strong>Install</strong> — the college icon will appear on your home screen!
+        </div>
+
+        <div style="font-weight:700;font-size:0.85rem;color:var(--royal);margin:14px 0 8px">🍎 iPhone &amp; iPad (Safari):</div>
+        <div style="font-size:0.82rem;color:var(--text-dark);line-height:1.5">
+          1. Tap the <strong>Share button (⬆)</strong> at the bottom bar of Safari.<br>
+          2. Scroll down and tap <strong>'Add to Home Screen' (➕)</strong>.<br>
+          3. Tap <strong>Add</strong> at top-right to install the portal app.
+        </div>
+      </div>
+
+      <button type="button" class="btn btn-primary btn-full" onclick="closePwaModal()">Got it, Thanks!</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════ MODAL: Student Edit ═══════════ -->
 <div class="overlay" id="studentModal">
   <div class="modal">
@@ -1902,12 +1944,14 @@ function showPage(id) {
 }
 function updateHeader() {
   const hr = document.getElementById("headerRight");
+  const installBtn = `<button type="button" class="btn btn-gold btn-sm" onclick="installPwa()" style="display:inline-flex;align-items:center;gap:6px;font-size:0.78rem;padding:5px 12px;border-radius:20px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.25);cursor:pointer" title="Install Pallavan Fee Portal as a Mobile App"><span style="font-size:14px">📲</span> Install App</button>`;
+
   if (!currentUser) {
-    hr.innerHTML = '<div class="header-badge">Fee Payment Portal</div>';
+    hr.innerHTML = installBtn + '<div class="header-badge">Fee Payment Portal</div>';
   } else if (currentUser === "admin") {
-    hr.innerHTML = '<span style="font-size:0.8rem;color:rgba(255,255,255,0.7);">Admin</span><div class="header-badge" style="background:rgba(201,168,76,0.25);border-color:var(--gold);">pallavanppt86</div>';
+    hr.innerHTML = installBtn + '<span style="font-size:0.8rem;color:rgba(255,255,255,0.7);">Admin</span><div class="header-badge" style="background:rgba(201,168,76,0.25);border-color:var(--gold);">pallavanppt86</div>';
   } else {
-    hr.innerHTML = `<div class="header-badge">${escHtml(currentUser.name)}</div>`;
+    hr.innerHTML = installBtn + `<div class="header-badge">${escHtml(currentUser.name)}</div>`;
   }
 }
 
@@ -4777,38 +4821,18 @@ function installPwa() {
         console.log("User accepted PWA installation");
       }
       deferredPwaPrompt = null;
-      const installBtn = document.getElementById("btnPwaInstall");
-      if (installBtn) installBtn.style.display = "none";
     });
-  } else {
-    alert("To install the Pallavan Fee Portal app on your phone:\n• Android (Chrome): Tap browser menu (⋮) → 'Install app' or 'Add to Home screen'.\n• iOS (Safari): Tap Share (⬆) → 'Add to Home Screen'.");
+    return;
   }
+  
+  // Show instructions modal for iOS / Desktop / unsupported prompt states
+  const modal = document.getElementById("pwaInstallModal");
+  if (modal) modal.classList.add("open");
 }
 
-// ─── Settings Edit Toggle ───
-let editState = { paySettings:false, feeStruct:false };
-
-// Populate day options dynamically based on chosen month (avoids invalid dates like June 31)
-function populateAcadDays(keepVal) {
-  const monEl = document.getElementById("acadCutoffMonth");
-  const dayEl = document.getElementById("acadCutoffDay");
-  if (!monEl || !dayEl) return;
-  const month     = parseInt(monEl.value) + 1; // 1-indexed for Date
-  const year      = 2024; // non-leap reference year; use 2024 for Feb 29 support
-  const daysInMon = new Date(year, month, 0).getDate();
-  const curVal    = keepVal || parseInt(dayEl.value) || 30;
-  dayEl.innerHTML = "";
-  for (let d = 1; d <= daysInMon; d++) {
-    const opt = document.createElement("option");
-    opt.value = d; opt.textContent = d;
-    if (d === Math.min(curVal, daysInMon)) opt.selected = true;
-    dayEl.appendChild(opt);
-  }
-}
-
-function validateAcadDate() {
-  // Just ensure day is valid for chosen month — populateAcadDays handles this
-  populateAcadDays(parseInt(document.getElementById("acadCutoffDay")?.value));
+function closePwaModal() {
+  const modal = document.getElementById("pwaInstallModal");
+  if (modal) modal.classList.remove("open");
 }
 
 function toggleEditSection(section) {
