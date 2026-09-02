@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" href="favicon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3D1A6E">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PPT Fees">
+<link rel="apple-touch-icon" href="icon-192.png">
   <title>Pallavan Polytechnic College – Fee Payment Portal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -112,8 +118,11 @@ textarea.form-control{resize:vertical;min-height:80px}
 .link-btn{background:none;border:none;color:var(--royal-light);cursor:pointer;font-size:0.88rem;text-decoration:underline;font-family:'DM Sans',sans-serif}
 .link-btn:hover{color:var(--royal)}
 
-/* ALERTS */
-.alert{padding:12px 16px;border-radius:var(--radius);font-size:0.85rem;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px}
+/* ALERTS - Proper mobile layout with separate icon & coherent content block */
+.alert{padding:14px 18px;border-radius:var(--radius);font-size:0.86rem;line-height:1.5;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px;text-align:left;word-break:break-word}
+.alert-icon{flex-shrink:0;font-size:1.15rem;line-height:1.3;display:inline-block}
+.alert-content{flex:1;min-width:0;line-height:1.5;word-break:break-word}
+.alert-content strong{font-weight:700}
 .alert-danger{background:var(--danger-bg);color:var(--danger);border:1px solid rgba(139,26,26,0.2)}
 .alert-success{background:var(--success-bg);color:var(--success);border:1px solid rgba(27,107,58,0.2)}
 .alert-warning{background:var(--warning-bg);color:var(--warning);border:1px solid rgba(122,85,0,0.2)}
@@ -244,10 +253,13 @@ textarea.form-control{resize:vertical;min-height:80px}
 
 /* ADMIN TOOLBAR */
 .admin-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px}
-.search-input-wrap{position:relative}
-.search-input-wrap input{padding:10px 14px 10px 38px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:'DM Sans',sans-serif;font-size:0.88rem;background:var(--white);width:240px;outline:none;transition:border-color 0.2s}
-.search-input-wrap input:focus{border-color:var(--royal-light)}
-.search-input-wrap::before{content:'🔍';position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px}
+.admin-filter-bar{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;background:#F9F7FC;padding:12px 14px;border-radius:12px;border:1px solid var(--border);align-items:center}
+@media(max-width:960px){
+  .admin-filter-bar{grid-template-columns:1fr 1fr}
+}
+@media(max-width:550px){
+  .admin-filter-bar{grid-template-columns:1fr}
+}
 
 /* UTILITY */
 .text-center{text-align:center}.text-right{text-align:right}
@@ -1051,18 +1063,59 @@ textarea.form-control{resize:vertical;min-height:80px}
     <!-- TAB PANEL 1: Registered Students -->
     <div class="admin-tab-panel active" id="adminTabPanel-students">
     <div class="section-card">
-      <div class="card-head">
-        <h3>Registered Students</h3>
-        <div class="d-flex gap-8 align-center">
-          <button class="btn btn-gold btn-sm" onclick="openAdminAddStudent()">＋ Add Student</button>
-          <div class="search-input-wrap">
-            <input type="text" id="adminSearch" placeholder="Search by name, App ID, mobile or Reg. No…" oninput="renderStudentTable()">
+      <div class="card-head" style="flex-direction:column;align-items:stretch;gap:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div>
+            <h3 style="margin:0">Registered Students</h3>
+            <div id="adminStudentCountBadge" style="font-size:0.8rem;color:var(--text-muted);margin-top:3px">Loading students…</div>
           </div>
-          <select id="adminFilterYear" class="form-control" style="width:auto;padding:8px 12px;font-size:0.85rem" onchange="renderStudentTable()">
-            <option value="">All Years</option>
-            <option>1st Year</option><option>2nd Year</option><option>3rd Year</option><option>Passed Out</option>
-          </select>
+          <div class="d-flex gap-8 align-center" style="flex-wrap:wrap">
+            <button class="btn btn-gold btn-sm" onclick="openAdminAddStudent()">＋ Add Student</button>
+            <div class="dropdown" style="position:relative;display:inline-block">
+              <button class="btn btn-outline btn-sm" style="display:flex;align-items:center;gap:6px" onclick="toggleExportMenu()">📊 Export Reports ▾</button>
+              <div id="exportMenuDropdown" style="display:none;position:absolute;right:0;top:100%;margin-top:4px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(61,26,110,0.15);min-width:210px;z-index:100;overflow:hidden">
+                <button type="button" style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;font-size:0.85rem;cursor:pointer;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='#F5F0FF'" onmouseout="this.style.background='none'" onclick="exportStudentDuesCSV();toggleExportMenu(false)">
+                  <span>📥</span> Student Dues (.csv)
+                </button>
+                <button type="button" style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;font-size:0.85rem;cursor:pointer;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px" onmouseover="this.style.background='#F5F0FF'" onmouseout="this.style.background='none'" onclick="exportTransactionsCSV();toggleExportMenu(false)">
+                  <span>📥</span> Transactions Ledger (.csv)
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
+        
+        <!-- Filter Controls: Clean responsive bar with no rogue icons -->
+        <div class="admin-filter-bar">
+          <div>
+            <input type="text" id="adminSearch" class="form-control" style="font-size:0.85rem;padding:9px 12px;background:#fff;width:100%" placeholder="Search by Name, App ID, Reg No, Mobile…" oninput="renderStudentTable()">
+          </div>
+          <div>
+            <select id="adminFilterStatus" class="form-control" style="font-size:0.85rem;padding:9px 10px;background:#fff;width:100%" onchange="renderStudentTable()">
+              <option value="">All Payment Statuses</option>
+              <option value="due">⚠️ Dues Pending (Defaulters)</option>
+              <option value="cleared">✅ Fully Cleared</option>
+              <option value="pending_verif">⏳ Verification Pending</option>
+            </select>
+          </div>
+          <div>
+            <select id="adminFilterCourse" class="form-control" style="font-size:0.85rem;padding:9px 10px;background:#fff;width:100%" onchange="renderStudentTable()">
+              <option value="">All Programmes / Depts</option>
+              <option value="Mechanical">Mechanical Engineering</option>
+              <option value="Electrical">Electrical &amp; Electronics (EEE)</option>
+              <option value="Electronics">Electronics &amp; Comm. (ECE)</option>
+              <option value="Civil">Civil Engineering</option>
+              <option value="Computer">Computer Engineering</option>
+            </select>
+          </div>
+          <div>
+            <select id="adminFilterYear" class="form-control" style="font-size:0.85rem;padding:9px 10px;background:#fff;width:100%" onchange="renderStudentTable()">
+              <option value="">All Years</option>
+              <option>1st Year</option><option>2nd Year</option><option>3rd Year</option><option>Passed Out</option>
+            </select>
+          </div>
+        </div>
+      </div>
       </div>
       <div class="card-body" style="padding:0">
         <div class="table-wrap" style="border:none;box-shadow:none;border-radius:0;overflow-x:auto">
@@ -1239,9 +1292,63 @@ textarea.form-control{resize:vertical;min-height:80px}
 
     <!-- TAB PANEL 4: Analytics -->
     <div class="admin-tab-panel" id="adminTabPanel-analytics">
+    
+    <!-- Overall College KPI Summary -->
+    <div class="section-card" style="margin-bottom:20px">
+      <div class="card-head">
+        <h3>🏛️ Overall Institutional Financial Health</h3>
+        <span class="badge badge-purple" id="analyticsOverallRecoveryBadge">0% Recovered</span>
+      </div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:14px">
+          <div style="background:#FAF8FD;border:1px solid var(--border);border-radius:12px;padding:16px;border-left:4px solid var(--royal)">
+            <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;font-weight:600">Total Billed Fees</div>
+            <div style="font-family:'Cinzel',serif;font-size:1.6rem;color:var(--royal);font-weight:700;margin-top:4px" id="kpiTotalBilled">₹0</div>
+          </div>
+          <div style="background:#FAF8FD;border:1px solid var(--border);border-radius:12px;padding:16px;border-left:4px solid #27AE60">
+            <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;font-weight:600">Total Collected Amount</div>
+            <div style="font-family:'Cinzel',serif;font-size:1.6rem;color:#27AE60;font-weight:700;margin-top:4px" id="kpiTotalCollected">₹0</div>
+          </div>
+          <div style="background:#FAF8FD;border:1px solid var(--border);border-radius:12px;padding:16px;border-left:4px solid #C0392B">
+            <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;font-weight:600">Total Outstanding Arrears</div>
+            <div style="font-family:'Cinzel',serif;font-size:1.6rem;color:#C0392B;font-weight:700;margin-top:4px" id="kpiTotalPending">₹0</div>
+          </div>
+          <div style="background:#FAF8FD;border:1px solid var(--border);border-radius:12px;padding:16px;border-left:4px solid var(--gold)">
+            <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;font-weight:600">Total Enrolled Students</div>
+            <div style="font-family:'Cinzel',serif;font-size:1.6rem;color:var(--royal-dark);font-weight:700;margin-top:4px" id="kpiTotalStudents">0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Department-wise Recovery Table & Visual Progress -->
+    <div class="section-card" style="margin-bottom:20px">
+      <div class="card-head">
+        <h3>📊 Department-wise Fee Recovery &amp; Collection Progress</h3>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div class="table-wrap" style="border:none;box-shadow:none;border-radius:0;overflow-x:auto">
+          <table style="min-width:700px">
+            <thead>
+              <tr>
+                <th>Programme / Department</th>
+                <th>Students</th>
+                <th>Total Billed</th>
+                <th>Total Collected</th>
+                <th>Outstanding</th>
+                <th>Recovery %</th>
+              </tr>
+            </thead>
+            <tbody id="deptAnalyticsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Period Collection Analytics -->
     <div class="section-card">
       <div class="card-head">
-        <h3>Fee Collection Analytics</h3>
+        <h3>📅 Period-wise Collection Analytics</h3>
       </div>
       <div class="card-body">
         <div class="analytics-period-nav">
@@ -1260,7 +1367,7 @@ textarea.form-control{resize:vertical;min-height:80px}
         <div class="analytics-stat-row">
           <div class="analytics-stat-box">
             <div class="num" id="analyticsTotalCollected">₹0</div>
-            <div class="lbl">Total Collected</div>
+            <div class="lbl">Total Collected in Period</div>
           </div>
           <div class="analytics-stat-box">
             <div class="num" id="analyticsPaymentCount">0</div>
@@ -1271,6 +1378,22 @@ textarea.form-control{resize:vertical;min-height:80px}
             <div class="lbl">New Registrations</div>
           </div>
         </div>
+        <div class="analytics-charts-row">
+          <div class="analytics-pie-col">
+            <div class="analytics-pie-chart" id="analyticsPieChart"></div>
+            <div class="analytics-legend" id="analyticsLegend"></div>
+          </div>
+          <div class="analytics-bar-chart" id="analyticsBarChart"></div>
+        </div>
+
+        <div style="margin-top:32px;padding-top:24px;border-top:1px solid var(--border)">
+          <h3 style="font-family:'Cinzel',serif;color:var(--royal);font-size:1rem;font-weight:600;margin-bottom:4px" id="analyticsPeriodDetailsTitle">Payment Details</h3>
+          <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:16px">Students who paid fees in the period selected above</div>
+          <div id="analyticsPeriodDetails"></div>
+        </div>
+      </div>
+    </div>
+    </div>
         <div class="analytics-charts-row">
           <div class="analytics-pie-col">
             <div class="analytics-pie-chart" id="analyticsPieChart"></div>
@@ -3294,6 +3417,12 @@ function renderAnalyticsPieChart(catTotals, total) {
     const [label, amt] = entries[0];
     const color = ANALYTICS_CATEGORY_COLORS[label] || "#5E2EA0";
     slices = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}"><link rel="icon" type="image/png" href="favicon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3D1A6E">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PPT Fees">
+<link rel="apple-touch-icon" href="icon-192.png">
   <title>${escHtml(label)}: ₹${fmt(amt)} (100%)</title></circle>`;
   } else {
     entries.forEach(([label, amt]) => {
@@ -3308,6 +3437,12 @@ function renderAnalyticsPieChart(catTotals, total) {
       const y2 = cy + r*Math.sin(angleEnd*Math.PI/180);
       slices += `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${large} 1 ${x2},${y2} Z" fill="${color}" stroke="#fff" stroke-width="1.5">
         <link rel="icon" type="image/png" href="favicon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3D1A6E">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PPT Fees">
+<link rel="apple-touch-icon" href="icon-192.png">
   <title>${escHtml(label)}: ₹${fmt(amt)} (${(pct*100).toFixed(1)}%)</title>
       </path>`;
       angleStart = angleEnd;
@@ -4014,6 +4149,7 @@ async function renderAdminDash() {
     document.getElementById("viewUpiId").innerHTML    = settings.upiId    ? escHtml(settings.upiId)    : '<em class="text-muted">Not set</em>';
     document.getElementById("viewAccNo").innerHTML    = settings.accNo    ? escHtml(settings.accNo)    : '<em class="text-muted">Not set</em>';
     renderFeeStructTables(settings);
+    renderDepartmentAnalytics(students);
     // Load academic year cutoff globally — sanitize against invalid day/month combos
     const _monthNames=["January","February","March","April","May","June","July","August","September","October","November","December"];
     let _cm = settings.acadCutoffMonth !== undefined ? settings.acadCutoffMonth : 5;
@@ -4175,53 +4311,478 @@ function promptConfirmPayment(appId, payIdx, studentName, amount, refId) {
   }
 }
 
+function toggleExportMenu(forceState) {
+  const menu = document.getElementById("exportMenuDropdown");
+  if (!menu) return;
+  if (typeof forceState === "boolean") {
+    menu.style.display = forceState ? "block" : "none";
+  } else {
+    menu.style.display = menu.style.display === "block" ? "none" : "block";
+  }
+}
+
+// Close export menu when clicking outside
+document.addEventListener("click", (e) => {
+  const menu = document.getElementById("exportMenuDropdown");
+  if (menu && menu.style.display === "block") {
+    if (!e.target.closest(".dropdown")) {
+      menu.style.display = "none";
+    }
+  }
+});
+
 function renderStudentTable(cachedStudents) {
   const doRender = (students) => {
-    const q  = (document.getElementById("adminSearch")?.value||"").toLowerCase();
-    const fy = document.getElementById("adminFilterYear")?.value||"";
-    const filtered = students.filter(s=>{
+    window._adminStudentsCache = students;
+    const q       = (document.getElementById("adminSearch")?.value || "").toLowerCase().trim();
+    const fy      = document.getElementById("adminFilterYear")?.value || "";
+    const fc      = document.getElementById("adminFilterCourse")?.value || "";
+    const fStatus = document.getElementById("adminFilterStatus")?.value || "";
+
+    let totalFilteredDues = 0;
+
+    const filtered = students.filter(s => {
+      // Auto-update studyYear based on admYear + cutoff rule
+      const autoYear = getAutoStudyYear(s);
+      if (s.studyYear !== autoYear) s.studyYear = autoYear;
+
+      const { totalOutstanding } = computeStudentDues(s);
+      const hasPend = (s.payments || []).some(p => p.status === "Pending Verification");
+
+      // 1. Text Search Filter
       const mq = !q
-        || s.name.toLowerCase().includes(q)
-        || s.appId.toLowerCase().includes(q)
+        || (s.name && s.name.toLowerCase().includes(q))
+        || (s.appId && s.appId.toLowerCase().includes(q))
         || (s.mobile && s.mobile.toLowerCase().includes(q))
+        || (s.fatherMobile && s.fatherMobile.toLowerCase().includes(q))
+        || (s.address && s.address.toLowerCase().includes(q))
+        || (s.schoolDistrict && s.schoolDistrict.toLowerCase().includes(q))
         || (s.regNo && s.regNo.toLowerCase().includes(q));
-      const my = !fy || s.studyYear===fy;
-      return mq&&my;
+
+      // 2. Year Filter
+      const my = !fy || s.studyYear === fy;
+
+      // 3. Department / Course Filter
+      const mc = !fc || (s.course && s.course.toLowerCase().includes(fc.toLowerCase()));
+
+      // 4. Status Filter
+      let ms = true;
+      if (fStatus === "due") ms = (totalOutstanding > 0);
+      else if (fStatus === "cleared") ms = (totalOutstanding === 0 && !hasPend);
+      else if (fStatus === "pending_verif") ms = hasPend;
+
+      const match = mq && my && mc && ms;
+      if (match) totalFilteredDues += totalOutstanding;
+      return match;
     });
+
+    // Update count badge
+    const countBadge = document.getElementById("adminStudentCountBadge");
+    if (countBadge) {
+      countBadge.innerHTML = `Showing <strong>${filtered.length}</strong> of <strong>${students.length}</strong> students · Total Filtered Dues: <strong style="color:var(--danger)">₹${fmt(totalFilteredDues)}</strong>`;
+    }
+
     const tbody = document.getElementById("studentTableBody");
     if (!tbody) return;
     if (!filtered.length) {
-      tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-muted)">No students found.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text-muted)">No students match the selected filter criteria.</td></tr>';
       return;
     }
-    tbody.innerHTML = filtered.map(s=>{
-      // Auto-update studyYear based on admYear + June 30 rule
-      const autoYear = getAutoStudyYear(s);
-      if (s.studyYear !== autoYear) {
-        // Silently update in memory for display — actual DB update happens in checkAndIncrementYear
-        s.studyYear = autoYear;
-      }
+
+    tbody.innerHTML = filtered.map(s => {
       const { totalOutstanding } = computeStudentDues(s);
-      const hasPend = (s.payments||[]).some(p=>p.status==="Pending Verification");
+      const hasPend = (s.payments || []).some(p => p.status === "Pending Verification");
+      
+      let statusBadge = '<span class="badge badge-green">Cleared</span>';
+      if (hasPend) {
+        statusBadge = '<span class="badge badge-gold">⏳ Pay. Pending</span>';
+      } else if (totalOutstanding > 0) {
+        statusBadge = '<span class="badge badge-red">⚠️ Due</span>';
+      }
+
+      // WhatsApp Due Reminder Button
+      const waBtn = totalOutstanding > 0 
+        ? `<button type="button" class="btn btn-sm" data-appid="${escAttr(s.appId)}" onclick="sendWhatsAppDueReminder('${escAttr(s.appId)}')" style="background:#25D366;color:#fff;border:none;display:inline-flex;align-items:center;gap:5px;font-weight:600;padding:6px 11px;font-size:0.78rem;cursor:pointer;border-radius:6px;box-shadow:0 2px 6px rgba(37,211,102,0.25)" title="Send official fee reminder on WhatsApp">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="#fff" style="flex-shrink:0"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+            <span>WhatsApp</span>
+          </button>`
+        : '';
+
       return `<tr>
-        <td class="muted">${escHtml(s.appId)}</td>
+        <td class="muted"><strong>${escHtml(s.appId)}</strong></td>
         <td class="muted">${s.regNo ? escHtml(s.regNo) : '<span style="color:var(--text-muted);font-style:italic">—</span>'}</td>
-        <td style="font-weight:500">${escHtml(s.name)}</td>
-        <td class="muted" style="font-size:0.8rem">${escHtml((s.course||"").replace("Diploma in ",""))}</td>
-        <td>${escHtml(autoYear)}</td>
-        <td class="muted">${escHtml(s.mobile||"")}</td>
-        <td><strong>₹${fmt(totalOutstanding)}</strong></td>
-        <td>${totalOutstanding===0?'<span class="badge badge-green">Cleared</span>':hasPend?'<span class="badge badge-gold">Pay. Pending</span>':'<span class="badge badge-red">Due</span>'}</td>
+        <td style="font-weight:600;color:var(--royal-dark)">${escHtml(s.name)}</td>
+        <td class="muted" style="font-size:0.8rem">${escHtml((s.course || "").replace("Diploma in ", ""))}</td>
+        <td><span style="font-weight:500">${escHtml(s.studyYear || "1st Year")}</span></td>
+        <td class="muted">${escHtml(s.mobile || "")}</td>
+        <td><strong style="color:${totalOutstanding > 0 ? 'var(--danger)' : 'var(--success)'}">₹${fmt(totalOutstanding)}</strong></td>
+        <td>${statusBadge}</td>
         <td>
-          <button class="btn btn-primary btn-sm" onclick="openStudentModal('${escAttr(s.appId)}')">View / Edit</button>
-          &nbsp;
-          <button class="btn btn-gold btn-sm" onclick="openAdminPayModal('${escAttr(s.appId)}')" title="Record a cash / offline payment for this student">💵 Pay</button>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="openStudentModal('${escAttr(s.appId)}')">View / Edit</button>
+            <button class="btn btn-gold btn-sm" onclick="openAdminPayModal('${escAttr(s.appId)}')" title="Record a cash / offline payment for this student">💵 Pay</button>
+            ${waBtn}
+          </div>
         </td>
       </tr>`;
     }).join("");
   };
+
   if (cachedStudents) { doRender(cachedStudents); return; }
   DB.getStudents().then(doRender).catch(console.error);
+}
+
+// ══════════════════════════════════════════════════════════
+// B. 1-CLICK WHATSAPP DUE REMINDER (ADMIN)
+// ══════════════════════════════════════════════════════════
+function sendWhatsAppDueReminder(appId) {
+  if (!appId) return;
+  const appIdClean = String(appId).trim().toLowerCase();
+
+  // Find student in memory cache or fallback to students array
+  let stu = (window._adminStudentsCache || []).find(s => s.appId && s.appId.trim().toLowerCase() === appIdClean);
+  
+  if (!stu) {
+    // If not in cache, load directly from DB and call
+    DB.getStudent(appId).then(s => {
+      if (s) {
+        if (!window._adminStudentsCache) window._adminStudentsCache = [];
+        window._adminStudentsCache.push(s);
+        sendWhatsAppDueReminder(appId);
+      } else {
+        alert("Student record not found for App ID: " + appId);
+      }
+    }).catch(e => {
+      alert("Error loading student: " + (e.message || e));
+    });
+    return;
+  }
+
+  const { totalOutstanding } = computeStudentDues(stu);
+  if (totalOutstanding <= 0) {
+    alert(`Student ${stu.name} has no outstanding dues (Balance: ₹0)!`);
+    return;
+  }
+
+  const upiId = (window._portalUpiId || "Swapna.mothi-1@okicici").trim();
+  
+  // Look for any valid 10-digit phone number
+  const phoneCandidates = [stu.fatherMobile, stu.mobile, stu.motherMobile, stu.guardianMobile];
+  let targetPhone = "";
+  for (const p of phoneCandidates) {
+    const clean = String(p || "").replace(/[^0-9]/g, "").slice(-10);
+    if (clean && clean.length === 10) {
+      targetPhone = clean;
+      break;
+    }
+  }
+  
+  // If no phone found in record, prompt admin to enter one
+  if (!targetPhone || targetPhone.length < 10) {
+    const inputPhone = prompt(`No 10-digit mobile number found in records for ${stu.name}.
+Please enter the WhatsApp mobile number to send reminder:`, "");
+    if (!inputPhone) return;
+    const cleanInput = String(inputPhone).replace(/[^0-9]/g, "").slice(-10);
+    if (cleanInput && cleanInput.length === 10) {
+      targetPhone = cleanInput;
+    } else {
+      alert("Please enter a valid 10-digit mobile number.");
+      return;
+    }
+  }
+  
+  const portalUrl = window.location.href.split("?")[0].split("#")[0];
+  const msg = 
+`*PALLAVAN POLYTECHNIC COLLEGE (CODE: 370)*
+*OFFICIAL FEE PAYMENT NOTICE*
+
+Dear Parent / Student,
+
+Greetings from Pallavan Polytechnic College, Kanchipuram.
+
+This is a fee reminder regarding *${(stu.name || "").toUpperCase()}* (Application ID: *${stu.appId}*, Reg No: *${stu.regNo || "—"}*).
+
+📚 *Course / Dept:* ${stu.course || "Diploma"} (${stu.studyYear || "1st Year"})
+💰 *Outstanding Due Amount:* ₹${fmt(totalOutstanding)}
+🏛️ *College Official UPI ID:* ${upiId}
+🌐 *Online Payment Portal:* ${portalUrl}
+
+Please make the payment online or at the college accounts section at the earliest to avoid semester/exam registration delays.
+
+_If you have already paid, please ensure your transaction reference number is submitted on the portal for instant verification._
+
+Warm regards,
+*Accounts & Admissions Section*
+Pallavan Polytechnic College, Kolivakkam, Kanchipuram`;
+
+  // Standard Universal WhatsApp link
+  const waUrl = `https://api.whatsapp.com/send?phone=91${targetPhone}&text=${encodeURIComponent(msg)}`;
+
+  // Launch WhatsApp seamlessly
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (isMobile) {
+    window.location.href = waUrl;
+  } else {
+    const win = window.open(waUrl, "_blank");
+    if (!win || win.closed || typeof win.closed === "undefined") {
+      window.location.href = waUrl;
+    }
+  }
+}
+
+function downloadCsvFile(csvContent, filename) {
+  // UTF-8 BOM ensures Excel on Windows opens Indian Rupee and text with 100% correct encoding
+  const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  setTimeout(() => {
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, 300);
+}
+
+function csvEscape(val) {
+  if (val === null || val === undefined) return '""';
+  const str = String(val).replace(/"/g, '""');
+  return `"${str}"`;
+}
+
+async function exportStudentDuesCSV() {
+  setLoading(true, "Preparing Student Dues Report…");
+  try {
+    const students = await DB.getStudents();
+    setLoading(false);
+    if (!students || !students.length) {
+      alert("No student records available to export.");
+      return;
+    }
+
+    const headers = [
+      "Application ID", "Registration No", "Full Name", "Programme / Course",
+      "Admission Year", "Current Year of Study", "Student Mobile", "Father Mobile",
+      "Email Address", "District / City", "Total Dues Billed (INR)", "Total Paid (INR)",
+      "Outstanding Balance (INR)", "Fee Status", "Last Payment Date"
+    ];
+
+    const rows = students.map(s => {
+      const autoYear = getAutoStudyYear(s);
+      const dues = computeStudentDues(s);
+      const hasPend = (s.payments || []).some(p => p.status === "Pending Verification");
+      
+      let statusStr = "Cleared";
+      if (hasPend) statusStr = "Verification Pending";
+      else if (dues.totalOutstanding > 0) statusStr = "Dues Pending";
+
+      const confirmedPayments = (s.payments || []).filter(p => p.status === "Confirmed");
+      const lastPayment = confirmedPayments[confirmedPayments.length - 1];
+      const lastPayDate = lastPayment ? formatDate(lastPayment.confirmedAt || lastPayment.date) : "—";
+
+      return [
+        csvEscape(s.appId),
+        csvEscape(s.regNo || "—"),
+        csvEscape(s.name),
+        csvEscape(s.course || "—"),
+        csvEscape(s.admYear || "—"),
+        csvEscape(autoYear),
+        csvEscape(s.mobile || "—"),
+        csvEscape(s.fatherMobile || "—"),
+        csvEscape(s.email || "—"),
+        csvEscape(s.schoolDistrict || s.address || "—"),
+        csvEscape(dues.totalOutstanding + dues.totalPaid),
+        csvEscape(dues.totalPaid),
+        csvEscape(dues.totalOutstanding),
+        csvEscape(statusStr),
+        csvEscape(lastPayDate)
+      ].join(",");
+    });
+
+    const csvContent = headers.map(csvEscape).join(",") + "\n" + rows.join("\n");
+    const dateStr = new Date().toISOString().split("T")[0];
+    downloadCsvFile(csvContent, `PPT_Student_Fee_Dues_Report_${dateStr}.csv`);
+  } catch(e) {
+    setLoading(false);
+    console.error("Export error:", e);
+    alert("Error generating CSV: " + e.message);
+  }
+}
+
+async function exportTransactionsCSV() {
+  setLoading(true, "Preparing Transactions Ledger…");
+  try {
+    const students = await DB.getStudents();
+    setLoading(false);
+    
+    const txns = [];
+    students.forEach(s => {
+      (s.payments || []).forEach(p => {
+        txns.push({
+          student: s,
+          payment: p
+        });
+      });
+    });
+
+    if (!txns.length) {
+      alert("No transaction records found.");
+      return;
+    }
+
+    // Sort newest first
+    txns.sort((a, b) => new Date(b.payment.date || 0) - new Date(a.payment.date || 0));
+
+    const headers = [
+      "Receipt No", "Date & Time", "Application ID", "Registration No",
+      "Student Name", "Programme", "Year at Payment", "Payment For",
+      "Amount Paid (INR)", "Payment Method", "Reference ID / UTR", "Status",
+      "Collected By", "Remarks / Note"
+    ];
+
+    const rows = txns.map(({ student: s, payment: p }) => [
+      csvEscape(p.receiptNo || "—"),
+      csvEscape(formatDate(p.confirmedAt || p.date)),
+      csvEscape(s.appId),
+      csvEscape(s.regNo || "—"),
+      csvEscape(s.name),
+      csvEscape(s.course || "—"),
+      csvEscape(p.studyYearAtPayment || s.studyYear || "—"),
+      csvEscape(p.forLabel || "Fee Payment"),
+      csvEscape(p.amount || 0),
+      csvEscape(p.method || "UPI Transfer"),
+      csvEscape(p.referenceId || "—"),
+      csvEscape(p.status || "—"),
+      csvEscape(p.collectedBy || "Online"),
+      csvEscape(p.note || "—")
+    ].join(","));
+
+    const csvContent = headers.map(csvEscape).join(",") + "\n" + rows.join("\n");
+    const dateStr = new Date().toISOString().split("T")[0];
+    downloadCsvFile(csvContent, `PPT_Transactions_Ledger_${dateStr}.csv`);
+  } catch(e) {
+    setLoading(false);
+    console.error("Export error:", e);
+    alert("Error generating Transactions CSV: " + e.message);
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// D. DEPARTMENT-WISE FINANCIAL RECOVERY ANALYTICS
+// ══════════════════════════════════════════════════════════
+function renderDepartmentAnalytics(students) {
+  if (!students) return;
+
+  const depts = [
+    { key: "Mechanical", name: "Mechanical Engineering", short: "Mechanical" },
+    { key: "Electrical", name: "Electrical & Electronics (EEE)", short: "EEE" },
+    { key: "Electronics", name: "Electronics & Communication (ECE)", short: "ECE" },
+    { key: "Civil", name: "Civil Engineering", short: "Civil" },
+    { key: "Computer", name: "Computer Engineering", short: "Computer" }
+  ];
+
+  let grandBilled = 0;
+  let grandCollected = 0;
+  let grandPending = 0;
+
+  const deptStats = depts.map(d => {
+    const deptStudents = students.filter(s => (s.course || "").toLowerCase().includes(d.key.toLowerCase()));
+    let billed = 0;
+    let collected = 0;
+    let pending = 0;
+
+    deptStudents.forEach(s => {
+      const dues = computeStudentDues(s);
+      collected += dues.totalPaid;
+      pending += dues.totalOutstanding;
+      billed += (dues.totalPaid + dues.totalOutstanding);
+    });
+
+    grandBilled += billed;
+    grandCollected += collected;
+    grandPending += pending;
+
+    const rate = billed > 0 ? Math.round((collected / billed) * 100) : 0;
+    return { ...d, count: deptStudents.length, billed, collected, pending, rate };
+  });
+
+  // Overall KPI Cards
+  const kpiBilledEl = document.getElementById("kpiTotalBilled");
+  if (kpiBilledEl) kpiBilledEl.textContent = "₹" + fmt(grandBilled);
+  const kpiCollectedEl = document.getElementById("kpiTotalCollected");
+  if (kpiCollectedEl) kpiCollectedEl.textContent = "₹" + fmt(grandCollected);
+  const kpiPendingEl = document.getElementById("kpiTotalPending");
+  if (kpiPendingEl) kpiPendingEl.textContent = "₹" + fmt(grandPending);
+  const kpiStudentsEl = document.getElementById("kpiTotalStudents");
+  if (kpiStudentsEl) kpiStudentsEl.textContent = students.length;
+
+  const overallRate = grandBilled > 0 ? Math.round((grandCollected / grandBilled) * 100) : 0;
+  const badgeEl = document.getElementById("analyticsOverallRecoveryBadge");
+  if (badgeEl) {
+    badgeEl.textContent = `${overallRate}% Overall Recovery`;
+    badgeEl.className = overallRate >= 75 ? "badge badge-green" : overallRate >= 40 ? "badge badge-gold" : "badge badge-red";
+  }
+
+  // Render Department Table Rows
+  const tbody = document.getElementById("deptAnalyticsTableBody");
+  if (tbody) {
+    tbody.innerHTML = deptStats.map(ds => {
+      const barColor = ds.rate >= 75 ? "#27AE60" : ds.rate >= 40 ? "#C9A84C" : "#C0392B";
+      return `<tr>
+        <td><strong>${escHtml(ds.name)}</strong></td>
+        <td><span class="badge badge-purple">${ds.count}</span></td>
+        <td><strong>₹${fmt(ds.billed)}</strong></td>
+        <td style="color:#27AE60;font-weight:600">₹${fmt(ds.collected)}</td>
+        <td style="color:${ds.pending > 0 ? '#C0392B' : 'var(--text-muted)'};font-weight:600">₹${fmt(ds.pending)}</td>
+        <td style="min-width:140px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="flex:1;height:8px;background:#E8E0F0;border-radius:4px;overflow:hidden">
+              <div style="width:${ds.rate}%;height:100%;background:${barColor};border-radius:4px;transition:width 0.5s"></div>
+            </div>
+            <span style="font-size:0.82rem;font-weight:700;color:${barColor};min-width:36px">${ds.rate}%</span>
+          </div>
+        </td>
+      </tr>`;
+    }).join("");
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// E. PWA SERVICE WORKER REGISTRATION & PROMPT
+// ══════════════════════════════════════════════════════════
+let deferredPwaPrompt = null;
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").then((reg) => {
+      console.log("✅ PWA Service Worker registered:", reg.scope);
+    }).catch((err) => {
+      console.warn("PWA SW registration note:", err);
+    });
+  });
+}
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredPwaPrompt = e;
+  const installBtn = document.getElementById("btnPwaInstall");
+  if (installBtn) installBtn.style.display = "inline-flex";
+});
+
+function installPwa() {
+  if (deferredPwaPrompt) {
+    deferredPwaPrompt.prompt();
+    deferredPwaPrompt.userChoice.then((choiceResult) => {
+      if (choiceResult.outcome === "accepted") {
+        console.log("User accepted PWA installation");
+      }
+      deferredPwaPrompt = null;
+      const installBtn = document.getElementById("btnPwaInstall");
+      if (installBtn) installBtn.style.display = "none";
+    });
+  } else {
+    alert("To install the Pallavan Fee Portal app on your phone:\n• Android (Chrome): Tap browser menu (⋮) → 'Install app' or 'Add to Home screen'.\n• iOS (Safari): Tap Share (⬆) → 'Add to Home Screen'.");
+  }
 }
 
 // ─── Settings Edit Toggle ───
@@ -5337,7 +5898,19 @@ function formatDate(iso){
 }
 function escHtml(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function escAttr(s){ return String(s||"").replace(/'/g,"\\'").replace(/"/g,"&quot;"); }
-function showAlert(id,type,msg){ const el=document.getElementById(id); if(el) el.innerHTML=`<div class="alert alert-${type}">${msg}</div>`; }
+function showAlert(id, type, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const icons = { success: "✅", danger: "⚠️", warning: "⚠️", info: "💡" };
+  let cleanMsg = String(msg || "").trim();
+  let icon = icons[type] || "ℹ️";
+  const iconMatch = cleanMsg.match(/^([✅⚠️💡ℹ️❌])\s*/);
+  if (iconMatch) {
+    icon = iconMatch[1];
+    cleanMsg = cleanMsg.replace(/^([✅⚠️💡ℹ️❌])\s*/, "");
+  }
+  el.innerHTML = `<div class="alert alert-${type}"><span class="alert-icon">${icon}</span><div class="alert-content">${cleanMsg}</div></div>`;
+}
 function clearAlert(id){ const el=document.getElementById(id); if(el) el.innerHTML=""; }
 
 document.getElementById("studentModal").addEventListener("click",function(e){
