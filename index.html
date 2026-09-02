@@ -3856,14 +3856,14 @@ function handleUpiAppClick(appIdx) {
   const amtFormatted = parseFloat(_currentUpiAmt).toFixed(2);
   const autoRefId = window._currentAutoRefId || generatePaymentRefId();
   
-  // Clean ASCII alphanumeric note (max 30 chars, no special symbols/Rupee sign to prevent parser rejection)
+  // Clean ASCII alphanumeric note (max 30 chars)
   const cleanFor = String(_currentUpiFor || "Fee").replace(/[^a-zA-Z0-9 ]/g, " ").replace(/\s+/g, " ").trim().slice(0, 15);
   const cleanAppId = String((currentUser && currentUser.appId) || "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 10);
   const payNote   = `${autoRefId} ${cleanAppId} ${cleanFor}`.replace(/\s+/g, " ").trim().slice(0, 30);
   
   const universalUpiLink = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amtFormatted}&cu=INR&tn=${encodeURIComponent(payNote)}`;
 
-  // Auto-copy Reference ID to clipboard on every click for convenience
+  // Auto-copy Reference ID to clipboard
   try {
     navigator.clipboard.writeText(autoRefId);
   } catch(e) {}
@@ -3878,8 +3878,9 @@ function handleUpiAppClick(appIdx) {
     } else if (app.name === "Paytm") {
       targetUrl = `intent://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amtFormatted}&cu=INR&tn=${encodeURIComponent(payNote)}#Intent;scheme=upi;package=net.one97.paytm;end`;
     } else if (app.name === "BHIM") {
-      // Direct BHIM package intent on Android
-      targetUrl = `intent://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amtFormatted}&cu=INR&tn=${encodeURIComponent(payNote)}#Intent;scheme=upi;package=in.org.npci.upiapp;end`;
+      // Universal standard UPI link (avoids BHIM merchant package lock error)
+      targetUrl = universalUpiLink;
+      showAlert("upiStep2Alert", "info", `📋 Reference ID (<strong>${autoRefId}</strong>) & UPI ID copied! Opening payment app… In BHIM, you can also paste the UPI ID or scan the QR code.`);
     } else {
       // Any UPI App chooser
       targetUrl = universalUpiLink;
@@ -3891,8 +3892,6 @@ function handleUpiAppClick(appIdx) {
       targetUrl = `phonepe://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amtFormatted}&cu=INR&tn=${encodeURIComponent(payNote)}`;
     } else if (app.name === "Paytm") {
       targetUrl = `paytmmp://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amtFormatted}&cu=INR&tn=${encodeURIComponent(payNote)}`;
-    } else if (app.name === "BHIM") {
-      targetUrl = `bhim://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amtFormatted}&cu=INR&tn=${encodeURIComponent(payNote)}`;
     } else {
       targetUrl = universalUpiLink;
     }
